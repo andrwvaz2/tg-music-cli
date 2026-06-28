@@ -5,19 +5,13 @@ import time
 
 from .cover import render_cover
 from .models import format_duration
-from .render_base import clear_terminal_images
 
 
 class RenderSplitMixin:
     def draw_split(self) -> None:
         self.screen.erase()
         self.cover_graphics_pos = None
-        self.cover_graphics_draw_key = None
-        clear_terminal_images()
         height, width = self.screen.getmaxyx()
-
-        if not self.help_visible and self.current_track is not None and self.cover_path is not None:
-            self.refresh_cover_art(height, width)
 
         hdr_bg = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
         hdr_dim = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_DIM
@@ -138,6 +132,8 @@ class RenderSplitMixin:
         self.draw_split_footer(height, width)
 
         self.screen.refresh()
+        if not self.help_visible:
+            self.draw_graphics_cover()
         self.dirty = False
 
     def draw_split_details(self, top: int, x: int, width: int, height: int) -> None:
@@ -173,23 +169,41 @@ class RenderSplitMixin:
         remaining = top + height - row - queue_lines
         cover_h = max(remaining - 1, 0)
         cover_w = max(width - 4, 6)
+        inner_width = max(cover_w - 2, 0)
+        inner_height = max(cover_h - 2, 0)
+        cover_x = x + 2
+
+        if self.cover_path and cover_h >= 2:
+            self.refresh_cover_art_size(
+                max(inner_width, 6),
+                max(inner_height, 4),
+            )
 
         cover_lines = self.cover_lines
-        if not cover_lines and self.cover_path:
+        if not self.cover_graphics and not cover_lines and self.cover_path:
             cover_w_for_render = max(cover_w - 4, 10)
             cover_lines = render_cover(self.cover_path, max_width=cover_w_for_render, max_height=max(cover_h - 4, 4))
 
-        if cover_lines and cover_h >= 2:
+        if self.cover_graphics and cover_h >= 2:
+            blank_rows = min(inner_height, max(0, top + height - row))
+            for blank_row in range(row, row + blank_rows):
+                self.screen.addnstr(blank_row, cover_x, " " * inner_width, max(width - (cover_x - x) - 1, 0), curses.A_DIM)
+            if blank_rows > 0:
+                self.cover_graphics_pos = (row, cover_x)
+                row += blank_rows
+        elif cover_lines and cover_h >= 2:
             self.screen.addnstr(row, x + 1, "\u250c" + "\u2500" * (cover_w - 2) + "\u2510", max(width - 2, 0), curses.A_DIM)
             row += 1
             max_inner = min(cover_h - 2, top + height - row - 1)
             for i, cl in enumerate(cover_lines[:max(0, max_inner)]):
-                stripped = curses.stripacs(cl) if hasattr(curses, 'stripacs') else cl
-                vis_len = len(stripped)
+                vis_len = self.visible_width(cl)
                 pad_l = max((cover_w - 2 - vis_len) // 2, 0)
                 pad_r = max(cover_w - 2 - pad_l - vis_len, 0)
-                inner = " " * pad_l + stripped + " " * pad_r
-                self.screen.addnstr(row, x + 1, "\u2502" + inner[:cover_w - 2] + "\u2502", max(width - 2, 0), curses.A_DIM)
+                self.screen.addnstr(row, x + 1, "\u2502", max(width - 2, 0), curses.A_DIM)
+                self.screen.addnstr(row, x + 2, " " * inner_width, max(width - 3, 0), curses.A_DIM)
+                if inner_width > 0:
+                    self.add_ansi(row, x + 2 + pad_l, cl, max(inner_width - pad_l - pad_r, 0))
+                self.screen.addnstr(row, x + 1 + cover_w - 1, "\u2502", max(width - cover_w - 1, 0), curses.A_DIM)
                 row += 1
             if row < top + height:
                 self.screen.addnstr(row, x + 1, "\u2514" + "\u2500" * (cover_w - 2) + "\u2518", max(width - 2, 0), curses.A_DIM)

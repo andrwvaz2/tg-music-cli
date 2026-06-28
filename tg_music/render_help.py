@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import curses
+import time
 
+from .models import format_duration
 from .render_base import wrap
 
 

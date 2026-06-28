@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import curses
+import time
 
 from .db import connect
 from .models import format_duration

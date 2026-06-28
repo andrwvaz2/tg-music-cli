@@ -41,35 +41,107 @@ https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 
 ---
 
-## Requirements
+## System Compatibility
 
-* Python 3.11+
-* `uv` (optional, recommended for fast execution)
-* `mpv` (audio playback backend)
-* `chafa` (optional, for cover art rendering)
-* A Telegram application registered at `https://my.telegram.org` to obtain `api_id` and `api_hash`.
+* **Linux:** Fully supported (native experience).
+* **macOS:** Fully supported (requires installation of dependencies via Homebrew).
+* **Windows:** Supported via **WSL (Windows Subsystem for Linux)** (recommended) or native Windows (requires Unix socket support in Windows Terminal/OS, see below).
+
+---
+
+## Installation & Setup
+
+### 1. Install System Dependencies
+
+This project relies on `mpv` for audio playback and `chafa` (optional) for terminal cover art rendering.
+
+#### Linux (Debian/Ubuntu)
+```bash
+sudo apt update && sudo apt install -y mpv chafa
+```
+
+#### macOS
+```bash
+brew install mpv chafa
+```
+
+#### Windows
+* **Via WSL (Recommended):** Open your WSL terminal (e.g., Ubuntu) and follow the **Linux** installation commands.
+* **Native Windows:** Install dependencies via [Scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org/):
+  ```powershell
+  # Using Scoop
+  scoop install mpv chafa
+  # Using Chocolatey
+  choco install mpv chafa
+  ```
+
+### 2. Install the Project
+
+Clone this repository:
+```bash
+git clone https://github.com/yourusername/tg-music-cli.git
+cd tg-music-cli
+```
+
+Choose one of the following methods to run or install:
+
+#### Method A: Using `uv` (Recommended & Fastest)
+You can run commands directly without a global installation:
+```bash
+uv run tg-music <command>
+```
+Or install it as a globally accessible command:
+```bash
+uv tool install .
+```
+
+#### Method B: Standard Python (pip & venv)
+```bash
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows (cmd): .venv\Scripts\activate.bat
+
+# Install the package and dependencies
+pip install .
+```
 
 ---
 
 ## Quickstart
 
-If you are using `uv`:
+1. **Configure Telegram Credentials:**
+   Before running the app, you need an API ID and Hash. Go to [my.telegram.org](https://my.telegram.org), log in, create an application, and retrieve your credentials.
+   
+   Run the initialization wizard:
+   ```bash
+   # If installed via uv tool or pip:
+   tg-music init
+   
+   # Or using uv run:
+   uv run tg-music init
+   ```
 
-```bash
-# Navigate to the project directory
-cd ~/Proyectos/tg-music-cli
+2. **Scan a Music Channel:**
+   Index metadata from a public Telegram channel:
+   ```bash
+   # If installed globally:
+   tg-music scan https://t.me/Christian_Electronic --limit 300
+   
+   # Or using uv run:
+   uv run tg-music scan https://t.me/Christian_Electronic --limit 300
+   ```
 
-# Configure Telegram credentials
-uv run tg-music init
+3. **Start the TUI Player:**
+   Launch the interactive interface:
+   ```bash
+   # If installed globally:
+   tg-music tui
+   
+   # Or using uv run:
+   uv run tg-music tui
+   ```
 
-# Scan a music channel
-uv run tg-music scan https://t.me/Christian_Electronic --limit 300
-
-# Start the interactive TUI player
-uv run tg-music tui
-```
-
-*Note: On first run, the Telegram API will ask for your phone number and verification code. The session is safely stored locally at `~/.local/share/tg-music/session.session`.*
+*Note: On first execution, the Telegram client will prompt you for your phone number and verification code to authenticate. The session details are securely stored locally at `~/.local/share/tg-music/session.session`.*
 
 ---
 

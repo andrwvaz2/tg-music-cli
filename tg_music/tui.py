@@ -280,7 +280,7 @@ class Tui(RenderMixin, PlayerMixin):
             self.search()
         elif key in (ord(":"),):
             self.command_mode_prompt()
-        elif key in (ord("?"), curses.KEY_F1):
+        elif key in (ord("?"), ord("H"), curses.KEY_F1):
             self.toggle_help()
         elif key in (ord("f"),):
             self.toggle_favorite_selected()
@@ -666,10 +666,10 @@ class Tui(RenderMixin, PlayerMixin):
             header_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
 
             self.add(0, 0, " " * width, header_attr)
-            title = f" EXPLORAR: {current}"
+            title = f" BROWSE: {current}"
             self.add(0, 0, title[: width - 1], header_attr)
 
-            info = f"Enter: abrir/seleccionar  Backspace: subir  q: cancelar"
+            info = "Enter: open/select  Backspace: up  q: cancel"
             self.add(1, 0, info[: width - 1], curses.A_DIM)
             self.add(2, 0, "─" * max(width - 1, 0), curses.A_DIM)
 

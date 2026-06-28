@@ -165,6 +165,8 @@ class RenderSplitMixin:
             self.draw_split_details(body_top, p3_start, p3_w, body_h)
 
         self.draw_split_footer(height, width)
+        if self.help_visible:
+            self.draw_help_overlay(width, height)
 
         self.screen.refresh()
         if not self.help_visible:
@@ -262,7 +264,7 @@ class RenderSplitMixin:
                 row += 1
 
         if self.play_queue and row < top + height:
-            self.screen.addnstr(row, x + 1, "Cola:", max(width - 2, 0), self.color_attr(self.color_primary, -1) | curses.A_BOLD)
+            self.screen.addnstr(row, x + 1, "Queue:", max(width - 2, 0), self.color_attr(self.color_primary, -1) | curses.A_BOLD)
             row += 1
             q_lookup = {t.id: t for t in self.tracks}
             for qid in self.play_queue[:max(0, top + height - row)]:
@@ -284,7 +286,7 @@ class RenderSplitMixin:
 
         if self.split_panel == 0:
             hints = [
-                self.keycap("Enter", "abrir"),
+                self.keycap("Enter", "open"),
                 self.keycap("Space", "expand"),
                 self.keycap("a", "add"),
                 self.keycap("u", "scan"),

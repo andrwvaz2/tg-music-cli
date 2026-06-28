@@ -54,7 +54,12 @@ from .tui import run_tui
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv or ["tui"])
+    raw_args = sys.argv[1:] if argv is None else argv
+    if not raw_args:
+        raw_args = ["tui"]
+    elif raw_args[0] == "help":
+        raw_args = ["--help"] if len(raw_args) == 1 else [*raw_args[1:], "--help"]
+    args = parser.parse_args(raw_args)
 
     try:
         ensure_dirs()
@@ -258,7 +263,7 @@ def build_parser() -> argparse.ArgumentParser:
     play_folder.add_argument("--volume", type=int, help="Volume (0-150)")
     play_folder.set_defaults(func=cmd_play_folder)
 
-    tui = sub.add_parser("tui", help="Abre la interfaz de terminal")
+    tui = sub.add_parser("tui", help="Open the terminal interface")
     tui.set_defaults(func=cmd_tui)
 
     return parser
@@ -534,7 +539,7 @@ def cmd_status(_args: argparse.Namespace) -> int:
     print(f"Tracks total:   {len(all_tracks)}")
     print(f"Cached:         {cached_count}")
     print(f"Uncached:       {len(uncached)}")
-    print(f"Ignorados:      {ignored_count}")
+    print(f"Ignored:        {ignored_count}")
     print(f"Favorites:      {len(favs)}")
     print(f"Tags:           {len(tags)}")
     print(f"DB size:        {db_size}")

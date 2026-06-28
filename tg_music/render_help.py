@@ -80,7 +80,7 @@ class RenderHelpMixin:
                 (":", "Command mode"),
                 ("T", "Cycle theme"),
                 ("F2", "Theme picker"),
-                ("?", "Toggle this help"),
+                ("? / H / F1", "Toggle this help"),
                 ("q", "Quit"),
             ]),
         ]

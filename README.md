@@ -4,9 +4,7 @@
 
 Terminal music player for Telegram channels.
 
-<p align="center">
-  <video src="https://github.com/andrwvaz2/tg-music-cli/raw/main/assets/demo.mp4" width="100%" controls autoplay loop muted></video>
-</p>
+![tg-music demo](assets/demo.mp4)
 
 ```text
 ┌──────────────────────────────────────────────────────────┐

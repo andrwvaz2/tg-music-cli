@@ -55,9 +55,27 @@ https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 
 This project relies on `mpv` for audio playback and `chafa` (optional) for terminal cover art rendering.
 
-#### Linux (Debian/Ubuntu)
+#### Linux
+
+##### Debian / Ubuntu
 ```bash
 sudo apt update && sudo apt install -y mpv chafa
+```
+
+##### Arch Linux
+```bash
+sudo pacman -S mpv chafa
+```
+
+##### Fedora
+```bash
+sudo dnf install mpv chafa
+```
+
+##### NixOS
+Add `mpv` and `chafa` to `environment.systemPackages` or run them in a shell:
+```bash
+nix-shell -p mpv chafa
 ```
 
 #### macOS

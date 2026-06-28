@@ -4,9 +4,13 @@
 
 Terminal music player for Telegram channels.
 
-0
 
-https://github.com/andrwvaz2/tg-music-cli/blob/main/assets/VivaCut_video_1782641307765_1080HD.mp4
+
+https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
+
+
+
+
 
 ```text
 ┌──────────────────────────────────────────────────────────┐

@@ -4,12 +4,15 @@ import curses
 import time
 
 from .models import format_duration
-from .render_base import wrap
+from .render_base import clear_terminal_images, wrap
 
 
 class RenderHelpMixin:
     def toggle_help(self) -> None:
         self.help_visible = not self.help_visible
+        clear_terminal_images()
+        self.cover_graphics_pos = None
+        self.cover_graphics_draw_key = None
         self.dirty = True
 
     def draw_help_overlay(self, width: int, height: int) -> None:
@@ -18,17 +21,24 @@ class RenderHelpMixin:
         start_y = max(1, (height - overlay_h) // 2)
         start_x = max(1, (width - overlay_w) // 2)
 
-        help_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
-        title_attr = self.color_attr(curses.COLOR_CYAN, -1) | curses.A_BOLD
-        key_attr = self.color_attr(self.color_success, -1) | curses.A_BOLD
-        desc_attr = curses.A_NORMAL
-        dim_attr = curses.A_DIM
+        panel_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK)
+        border_attr = self.color_attr(curses.COLOR_CYAN, curses.COLOR_BLACK) | curses.A_BOLD
+        title_attr = self.color_attr(curses.COLOR_BLACK, curses.COLOR_CYAN) | curses.A_BOLD
+        section_attr = self.color_attr(curses.COLOR_CYAN, curses.COLOR_BLACK) | curses.A_BOLD
+        key_attr = self.color_attr(curses.COLOR_GREEN, curses.COLOR_BLACK) | curses.A_BOLD
+        desc_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK)
+        dim_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK) | curses.A_DIM
 
         for y in range(start_y, start_y + overlay_h):
-            self.screen.addnstr(y, start_x, " " * (overlay_w - 1), overlay_w - 1, help_attr)
+            self.screen.addnstr(y, start_x, " " * overlay_w, overlay_w, panel_attr)
+        self.screen.addnstr(start_y, start_x, "\u250c" + "\u2500" * (overlay_w - 2) + "\u2510", overlay_w, border_attr)
+        for y in range(start_y + 1, start_y + overlay_h - 1):
+            self.screen.addnstr(y, start_x, "\u2502", 1, border_attr)
+            self.screen.addnstr(y, start_x + overlay_w - 1, "\u2502", 1, border_attr)
+        self.screen.addnstr(start_y + overlay_h - 1, start_x, "\u2514" + "\u2500" * (overlay_w - 2) + "\u2518", overlay_w, border_attr)
 
         title = " TG-MUSIC Help "
-        self.screen.addnstr(start_y, start_x + max(0, (overlay_w - 1 - len(title)) // 2), title, overlay_w - 1, title_attr | curses.A_UNDERLINE)
+        self.screen.addnstr(start_y, start_x + max(1, (overlay_w - len(title)) // 2), title, max(overlay_w - 2, 0), title_attr)
 
         sections = [
             ("Playback", [
@@ -79,18 +89,18 @@ class RenderHelpMixin:
         for section_name, keys in sections:
             if content_y >= start_y + overlay_h - 2:
                 break
-            self.screen.addnstr(content_y, start_x + 2, f" {section_name} ", overlay_w - 4, title_attr)
+            self.screen.addnstr(content_y, start_x + 2, f" {section_name} ", max(overlay_w - 4, 0), section_attr)
             content_y += 1
             for key, desc in keys:
                 if content_y >= start_y + overlay_h - 1:
                     break
-                self.screen.addnstr(content_y, start_x + 4, f"{key:<14}", overlay_w - 8, key_attr)
-                self.screen.addnstr(content_y, start_x + 18, desc[:overlay_w - 22], overlay_w - 22, desc_attr)
+                self.screen.addnstr(content_y, start_x + 4, f"{key:<14}", max(overlay_w - 8, 0), key_attr)
+                self.screen.addnstr(content_y, start_x + 18, desc[: max(overlay_w - 22, 0)], max(overlay_w - 22, 0), desc_attr)
                 content_y += 1
             content_y += 1
 
         footer = f" {overlay_w - 2} cols "
-        self.screen.addnstr(start_y + overlay_h - 1, start_x + max(0, (overlay_w - 1 - len(footer)) // 2), footer, overlay_w - 1, dim_attr)
+        self.screen.addnstr(start_y + overlay_h - 1, start_x + max(1, (overlay_w - len(footer)) // 2), footer, max(overlay_w - 2, 0), dim_attr)
 
     def draw_mini(self) -> None:
         self.screen.erase()

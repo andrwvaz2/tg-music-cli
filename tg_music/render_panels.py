@@ -3,12 +3,89 @@ from __future__ import annotations
 import curses
 import time
 
-from .db import connect
+from .db import connect, get_track_tags, is_favorite
 from .models import format_duration
 from .render_base import clear_terminal_images, wrap
 
 
 class RenderPanelsMixin:
+    def draw_playback_tick(self) -> bool:
+        if self.current_track is None or self.play_start_time is None or self.mini_mode:
+            return False
+        if self.split_mode:
+            return self.draw_split_playback_tick()
+        if self.view == "channels":
+            return False
+
+        screen_height, screen_width = self.screen.getmaxyx()
+        left_width = max(42, int(screen_width * 0.58))
+        if screen_width < 90:
+            return False
+        right_x = left_width + 1
+        right_width = max(screen_width - right_x, 0)
+        if right_width <= 12:
+            return False
+
+        top = 6
+        height = screen_height - top
+        row = top
+        cover_top = None
+        if self.cover_path is not None:
+            _cover_width, cover_height = self.cover_box_size(right_width, height)
+            cover_top = max(top + 2, top + height - cover_height - 1)
+
+        row += 1  # NOW PLAYING heading
+        for _line in wrap(self.current_track.display_title, right_width - 2):
+            if cover_top is not None and row >= cover_top:
+                return False
+            row += 1
+
+        with connect() as conn:
+            fav = is_favorite(conn, self.current_track.id)
+            tags = get_track_tags(conn, self.current_track.id)
+
+        info_items = [
+            ("Channel", self.current_track.channel_title),
+            ("Duration", format_duration(self.current_track.duration)),
+            ("Cache", "Ready" if self.current_track.local_path else "Remote"),
+            ("Queue", str(len(self.play_queue))),
+            ("Favorite", "Yes" if fav else "No"),
+            ("Volume", f"{self.volume}%"),
+            ("Repeat", "On" if self.repeat_mode else "Off"),
+            ("Shuffle", "On" if self.shuffle_mode else "Off"),
+        ]
+        if tags:
+            info_items.append(("Tags", ", ".join(tags)))
+        for label, val in info_items:
+            if cover_top is not None and row >= cover_top:
+                return False
+            val_width = max(right_width - len(f"{label}: ") - 2, 5)
+            for _line in wrap(val, val_width):
+                if cover_top is not None and row >= cover_top:
+                    return False
+                row += 1
+
+        if row >= top + height - 1 or (cover_top is not None and row >= cover_top):
+            return False
+        row += 1  # Progress heading
+        if row >= top + height - 1 or (cover_top is not None and row >= cover_top):
+            return False
+
+        elapsed = int(time.time() - self.play_start_time)
+        duration = self.current_track.duration or 0
+        if duration > 0:
+            elapsed = min(elapsed, duration)
+        elapsed_str = format_duration(elapsed)
+        duration_str = format_duration(duration)
+        bar_width = max(right_width - len(elapsed_str) - len(duration_str) - 6, 8)
+        bar = self._make_progress_bar(elapsed, duration, bar_width)
+        timeline_text = f" {elapsed_str} {bar} {duration_str}"
+        attr = self.color_attr(self.color_success, -1)
+        self.screen.addnstr(row, right_x + 1, " " * max(right_width - 2, 0), max(right_width - 2, 0), attr)
+        self.screen.addnstr(row, right_x + 1, timeline_text[: max(right_width - 2, 0)], max(right_width - 2, 0), attr)
+        self.screen.refresh()
+        return True
+
     def draw(self) -> None:
         from .local import LOCAL_CHANNEL
         if self.mini_mode:
@@ -40,7 +117,7 @@ class RenderPanelsMixin:
         if self.query:
             parts.append(f"\u25b8 Search: {self.query}")
         if self.favorites_only:
-            parts.append("\u25b8 \u2665 Favoritos")
+            parts.append("\u25b8 \u2665 Favorites")
         if self.tag_filter:
             parts.append(f"\u25b8 Tag: {self.tag_filter}")
         if self.playlist_filter:
@@ -215,13 +292,13 @@ class RenderPanelsMixin:
             fav_mark = "\u2665" if track.id in self.favorite_ids else " "
 
             if is_playing:
-                status_label = "[Sonando]"
+                status_label = "[Playing]"
             elif is_caching:
-                status_label = "[Cacheando]"
+                status_label = "[Caching]"
             elif is_cached:
-                status_label = "[Caché]"
+                status_label = "[Cached]"
             else:
-                status_label = "[Remoto]"
+                status_label = "[Remote]"
 
             line = (
                 f"{marker} {playing}{cache}{queue_mark}{fav_mark}{source} {track.id:4d}  \u2514\u2500 "
@@ -389,7 +466,7 @@ class RenderPanelsMixin:
                     for blank_row in range(cover_top + 1, cover_top + 1 + blank_rows):
                         self.add(blank_row, cover_x, " " * max(cover_width, 0))
                 else:
-                    self.add(cover_top + 1, cover_x, "No hay espacio vertical para la portada.", curses.A_DIM)
+                    self.add(cover_top + 1, cover_x, "Not enough vertical space for cover art.", curses.A_DIM)
         elif self.cover_path:
             if cover_top is not None:
                 fallback = "Install chafa to render the cover art here."

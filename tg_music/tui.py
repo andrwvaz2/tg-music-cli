@@ -8,11 +8,12 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 from curses import wrapper
 from pathlib import Path
 
 from .cache import cache_tracks_async
-from .config import load_settings, save_settings
+from .config import DATA_DIR, load_settings, save_settings
 from .cover import extract_embedded_cover, supports_graphics_cover
 from .themes import THEMES, ColorTheme, get_theme, list_themes
 from .db import (
@@ -58,7 +59,7 @@ class Tui(RenderMixin, PlayerMixin):
         self.channel_filter: str | None = None
         self.channels: list[Channel] = []
         self.view = "channels"
-        self.status = "Enter abre, Backspace sube, e cola, / busca, r refresca, q sale"
+        self.status = "Enter opens, Backspace goes up, e queues, / searches, r refreshes, q quits"
         self.tracks: list[Track] = []
         self.browser_rows: list[dict[str, object]] = []
         self.play_queue: list[int] = []
@@ -169,8 +170,10 @@ class Tui(RenderMixin, PlayerMixin):
                     if self.player.is_playing():
                         elapsed = int(time.time() - self.play_start_time)
                         if elapsed != self.last_elapsed_seconds:
-                            self.dirty = True
                             self.last_elapsed_seconds = elapsed
+                            if not self.dirty and self.draw_playback_tick():
+                                continue
+                            self.dirty = True
                     else:
                         returncode = self.player.returncode()
                         self.play_start_time = None
@@ -182,123 +185,156 @@ class Tui(RenderMixin, PlayerMixin):
                             self.dirty = True
 
                 if self.dirty:
-                    self.draw()
+                    try:
+                        self.draw()
+                    except Exception as exc:
+                        self.log_exception("draw", exc)
+                        self.cover_graphics = None
+                        self.cover_graphics_pos = None
+                        self.cover_graphics_draw_key = None
+                        self.status = f"Render error: {exc}"
+                        self.screen.erase()
+                        self.screen.addnstr(0, 0, self.status, max(self.screen.getmaxyx()[1] - 1, 0))
+                        self.screen.refresh()
+                        self.dirty = False
                 key = self.screen.getch()
                 if key == -1:
                     continue
-                if key == 409 or key == curses.KEY_MOUSE:
-                    self.handle_mouse()
-                    continue
-                if self.help_visible:
-                    if key in (ord("?"), 27, curses.KEY_F1, ord("h"), ord("q")):
-                        self.help_visible = False
-                        self.dirty = True
-                    continue
-                if key in (ord("q"), 27):
-                    return
-                if key in (curses.KEY_DOWN, ord("j")):
-                    self.move(1)
-                elif key in (curses.KEY_UP, ord("k")):
-                    self.move(-1)
-                elif key in (curses.KEY_RIGHT, ord("l"), ord(" ")):
-                    self.expand_selected_channel()
-                elif key in (curses.KEY_LEFT, curses.KEY_BACKSPACE, 127, ord("h")):
-                    self.go_back()
-                elif key in (curses.KEY_NPAGE,):
-                    self.move(10)
-                elif key in (curses.KEY_PPAGE,):
-                    self.move(-10)
-                elif key in (ord("r"),):
-                    self.reload()
-                elif key in (ord("a"),):
-                    if self.view == "playlists":
-                        self.create_playlist_prompt()
-                    else:
-                        self.add_channel_prompt()
-                elif key in (ord("c"),):
-                    self.show_channels()
-                elif key in (ord("u"),):
-                    self.scan_more_prompt()
-                elif key in (ord("s"),):
-                    self.stop_playback()
-                elif key in (ord("n"),):
-                    self.play_next(auto=False)
-                elif key in (ord("x"),):
-                    self.ignore_selected()
-                elif key in (ord("e"),):
-                    self.enqueue_selected()
-                elif key in (ord("m"),):
-                    self.download_missing_prompt()
-                elif key in (ord("w"),):
-                    self.check_new_music_prompt()
-                elif key in (ord("W"),):
-                    self.toggle_watch()
-                elif key in (9,):  # Tab
-                    if self.split_mode:
-                        self.split_panel = (self.split_panel + 1) % 3
-                        if self.split_panel == 0:
-                            self.view = "channels"
-                        else:
-                            self.view = "tracks"
-                        self.status = ["Channels", "Tracks", "Details"][self.split_panel] + " panel"
-                        self.dirty = True
-                elif key in (ord("["),):
-                    self.move_queue(-1)
-                elif key in (ord("]"),):
-                    self.move_queue(1)
-                elif key in (ord("/"),):
-                    self.search()
-                elif key in (ord(":"),):
-                    self.command_mode_prompt()
-                elif key in (ord("?"), curses.KEY_F1):
-                    self.toggle_help()
-                elif key in (ord("f"),):
-                    self.toggle_favorite_selected()
-                elif key in (ord("R"),):
-                    self.toggle_repeat()
-                elif key in (ord("S"),):
-                    self.toggle_shuffle()
-                elif key in (ord("+"), ord("=")):
-                    self.adjust_volume(5)
-                elif key in (ord("-"),):
-                    self.adjust_volume(-5)
-                elif key in (ord("L"),):
-                    self.toggle_lyrics()
-                elif key in (ord("M"),):
-                    self.toggle_mini_mode()
-                elif key in (ord("T"),):
-                    self.toggle_theme()
-                elif key in (curses.KEY_F2,):
-                    self.theme_picker()
-                elif key in (ord("P"),):
-                    self.toggle_split_mode()
-                elif key in (ord("t"),):
-                    self.tag_prompt()
-                elif key in (ord("1"),):
-                    self.filter_favorites()
-                elif key in (ord("y"),):
-                    self.show_playlists()
-                elif key in (ord("Y"),):
-                    self.add_to_playlist_prompt()
-                elif key in (ord("g"),):
-                    self.focus_local_entry()
-                elif key in (10, 13):
-                    if self.split_mode:
-                        if self.split_panel == 0:
-                            self.open_selected_channel()
-                        elif self.split_panel == 1:
-                            self.play_selected()
-                    elif self.view == "channels":
-                        self.open_selected_channel()
-                    elif self.view == "playlists":
-                        self.open_selected_playlist()
-                    else:
-                        self.play_selected()
-                self.dirty = True
+                try:
+                    if self.handle_key(key):
+                        return
+                except Exception as exc:
+                    self.log_exception("key handler", exc)
+                    self.status = f"Error: {exc}"
+                    self.cover_graphics = None
+                    self.cover_graphics_pos = None
+                    self.cover_graphics_draw_key = None
+                    self.dirty = True
         finally:
             self.stop_watch_thread()
             self.player.stop()
             clear_terminal_images()
+
+    def handle_key(self, key: int) -> bool:
+        if key == 409 or key == curses.KEY_MOUSE:
+            self.handle_mouse()
+            return False
+        if self.help_visible:
+            if key in (ord("?"), 27, curses.KEY_F1, ord("h"), ord("q")):
+                self.help_visible = False
+                self.dirty = True
+            return False
+        if key in (ord("q"), 27):
+            return True
+        if key in (curses.KEY_DOWN, ord("j")):
+            self.move(1)
+        elif key in (curses.KEY_UP, ord("k")):
+            self.move(-1)
+        elif key in (curses.KEY_RIGHT, ord("l"), ord(" ")):
+            self.expand_selected_channel()
+        elif key in (curses.KEY_LEFT, curses.KEY_BACKSPACE, 127, ord("h")):
+            self.go_back()
+        elif key in (curses.KEY_NPAGE,):
+            self.move(10)
+        elif key in (curses.KEY_PPAGE,):
+            self.move(-10)
+        elif key in (ord("r"),):
+            self.reload()
+        elif key in (ord("a"),):
+            if self.view == "playlists":
+                self.create_playlist_prompt()
+            else:
+                self.add_channel_prompt()
+        elif key in (ord("c"),):
+            self.show_channels()
+        elif key in (ord("u"),):
+            self.scan_more_prompt()
+        elif key in (ord("s"),):
+            self.stop_playback()
+        elif key in (ord("n"),):
+            self.play_next(auto=False)
+        elif key in (ord("x"),):
+            self.ignore_selected()
+        elif key in (ord("e"),):
+            self.enqueue_selected()
+        elif key in (ord("m"),):
+            self.download_missing_prompt()
+        elif key in (ord("w"),):
+            self.check_new_music_prompt()
+        elif key in (ord("W"),):
+            self.toggle_watch()
+        elif key in (9,):
+            if self.split_mode:
+                self.split_panel = (self.split_panel + 1) % 3
+                if self.split_panel == 0:
+                    self.view = "channels"
+                else:
+                    self.view = "tracks"
+                self.status = ["Channels", "Tracks", "Details"][self.split_panel] + " panel"
+                self.dirty = True
+        elif key in (ord("["),):
+            self.move_queue(-1)
+        elif key in (ord("]"),):
+            self.move_queue(1)
+        elif key in (ord("/"),):
+            self.search()
+        elif key in (ord(":"),):
+            self.command_mode_prompt()
+        elif key in (ord("?"), curses.KEY_F1):
+            self.toggle_help()
+        elif key in (ord("f"),):
+            self.toggle_favorite_selected()
+        elif key in (ord("R"),):
+            self.toggle_repeat()
+        elif key in (ord("S"),):
+            self.toggle_shuffle()
+        elif key in (ord("+"), ord("=")):
+            self.adjust_volume(5)
+        elif key in (ord("-"),):
+            self.adjust_volume(-5)
+        elif key in (ord("L"),):
+            self.toggle_lyrics()
+        elif key in (ord("M"),):
+            self.toggle_mini_mode()
+        elif key in (ord("T"),):
+            self.toggle_theme()
+        elif key in (curses.KEY_F2,):
+            self.theme_picker()
+        elif key in (ord("P"),):
+            self.toggle_split_mode()
+        elif key in (ord("t"),):
+            self.tag_prompt()
+        elif key in (ord("1"),):
+            self.filter_favorites()
+        elif key in (ord("y"),):
+            self.show_playlists()
+        elif key in (ord("Y"),):
+            self.add_to_playlist_prompt()
+        elif key in (ord("g"),):
+            self.focus_local_entry()
+        elif key in (10, 13):
+            if self.split_mode:
+                if self.split_panel == 0:
+                    self.open_selected_channel()
+                elif self.split_panel == 1:
+                    self.play_selected()
+            elif self.view == "channels":
+                self.open_selected_channel()
+            elif self.view == "playlists":
+                self.open_selected_playlist()
+            else:
+                self.play_selected()
+        self.dirty = True
+        return False
+
+    def log_exception(self, context: str, exc: Exception) -> None:
+        try:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            with (DATA_DIR / "tui-crash.log").open("a", encoding="utf-8") as fh:
+                fh.write(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] {context}: {exc}\n")
+                fh.write(traceback.format_exc())
+        except OSError:
+            pass
 
     def handle_mouse(self) -> None:
         try:
@@ -401,16 +437,31 @@ class Tui(RenderMixin, PlayerMixin):
             self.dirty = True
 
     def toggle_split_mode(self) -> None:
+        leaving_split = self.split_mode
+        previous_panel = self.split_panel
         self.split_mode = not self.split_mode
+        clear_terminal_images()
+        self.cover_graphics_pos = None
+        self.cover_graphics_draw_key = None
         if self.split_mode:
             self.view = "channels"
+            self.split_panel = 0
             self.selected = 0
+        elif leaving_split and (previous_panel > 0 or self.channel_filter or self.current_track is not None):
+            self.view = "tracks"
+            if self.current_track is not None:
+                track_index = next((index for index, track in enumerate(self.tracks) if track.id == self.current_track.id), None)
+                if track_index is not None:
+                    self.selected = track_index
+            self.selected = min(self.selected, max(len(self.tracks) - 1, 0))
+            self.offset = min(self.offset, self.selected)
+            self.split_panel = 0
         self.status = "Split view on" if self.split_mode else "Split view off"
         self.dirty = True
 
     def toggle_lyrics(self) -> None:
         if self.current_track is None:
-            self.status = "Reproduce una cancion primero"
+            self.status = "Play a track first"
             self.dirty = True
             return
         self.lyrics_visible = not self.lyrics_visible
@@ -438,9 +489,9 @@ class Tui(RenderMixin, PlayerMixin):
             if result and (result.synced or result.plain):
                 self.lyrics_text = result.synced or result.plain or ""
             else:
-                self.lyrics_text = "(No se encontraron letras)"
+                self.lyrics_text = "(No lyrics found)"
         except Exception:
-            self.lyrics_text = "(Error buscando letras)"
+            self.lyrics_text = "(Lyrics lookup error)"
         finally:
             self.dirty = True
 
@@ -450,7 +501,7 @@ class Tui(RenderMixin, PlayerMixin):
         settings = load_settings()
         settings.volume = self.volume
         save_settings(settings)
-        self.status = f"Volumen: {self.volume}"
+        self.status = f"Volume: {self.volume}"
         self.dirty = True
 
     def toggle_repeat(self) -> None:
@@ -490,7 +541,7 @@ class Tui(RenderMixin, PlayerMixin):
 
     def tag_prompt(self) -> None:
         if self.view == "channels" or not self.tracks:
-            self.status = "Selecciona un track primero"
+            self.status = "Select a track first"
             self.dirty = True
             return
         track = self.tracks[self.selected]
@@ -508,31 +559,31 @@ class Tui(RenderMixin, PlayerMixin):
         with connect() as conn:
             self.playlists = list_playlists(conn)
         if not self.playlists:
-            self.status = "No hay playlists. Crea una con: tg-music playlist create <nombre>"
+            self.status = "No playlists. Create one with: tg-music playlist create <name>"
             self.dirty = True
             return
         self.view = "playlists"
         self.selected = 0
         self.offset = 0
-        self.status = "Playlists (Enter abre, a crea nueva, q vuelve)"
+        self.status = "Playlists (Enter opens, a creates new, q returns)"
         self.dirty = True
 
     def add_to_playlist_prompt(self) -> None:
         if self.view == "channels" or not self.tracks:
-            self.status = "Selecciona un track primero"
+            self.status = "Select a track first"
             self.dirty = True
             return
         track = self.tracks[self.selected]
         with connect() as conn:
             playlists = list_playlists(conn)
         if not playlists:
-            self.status = "No hay playlists. Crea una con 'a' en vista playlists"
+            self.status = "No playlists. Press 'a' in playlists view to create one"
             self.dirty = True
             return
         names = ", ".join(f"{i+1}:{p['name']}" for i, p in enumerate(playlists))
         choice = self.input_prompt(f"Track: {track.display_title[:25]}. Playlist ({names}): ")
         if not choice:
-            self.status = "Cancelado"
+            self.status = "Cancelled"
             self.dirty = True
             return
         try:
@@ -541,25 +592,25 @@ class Tui(RenderMixin, PlayerMixin):
                 pl = playlists[idx]
                 with connect() as conn:
                     add_to_playlist(conn, pl["id"], track.id)
-                self.status = f"Agregado a '{pl['name']}'"
+                self.status = f"Added to '{pl['name']}'"
             else:
-                self.status = "Indice invalido"
+                self.status = "Invalid index"
         except ValueError:
             with connect() as conn:
                 pl = get_playlist_by_name(conn, choice)
                 if pl:
                     with connect() as conn2:
                         add_to_playlist(conn2, pl["id"], track.id)
-                    self.status = f"Agregado a '{pl['name']}'"
+                    self.status = f"Added to '{pl['name']}'"
                 else:
-                    create_choice = self.input_prompt(f"Crear playlist '{choice}'? (s/n): ")
+                    create_choice = self.input_prompt(f"Create playlist '{choice}'? (y/n): ")
                     if create_choice.lower() == "s":
                         with connect() as conn2:
                             pl_id = create_playlist(conn2, choice)
                             add_to_playlist(conn2, pl_id, track.id)
                         self.status = f"Playlist '{choice}' creada y track agregado"
                     else:
-                        self.status = "Cancelado"
+                        self.status = "Cancelled"
         self.dirty = True
 
     def open_selected_playlist(self) -> None:
@@ -580,7 +631,7 @@ class Tui(RenderMixin, PlayerMixin):
     def create_playlist_prompt(self) -> None:
         name = self.input_prompt("Nombre de la playlist nueva: ")
         if not name:
-            self.status = "Cancelado"
+            self.status = "Cancelled"
             self.dirty = True
             return
         with connect() as conn:
@@ -719,7 +770,7 @@ class Tui(RenderMixin, PlayerMixin):
                 self.dirty = True
                 self.status = "Press Enter to open Local folder"
                 return
-        self.status = "No hay entrada Local"
+        self.status = "No Local entry"
         self.dirty = True
 
     def _list_dir(self, path: Path) -> list[Path]:
@@ -789,7 +840,7 @@ class Tui(RenderMixin, PlayerMixin):
         self.browser_rows = self.build_browser_rows()
         items_len = len(self.browser_rows) if self.view == "channels" else len(self.tracks)
         self.selected = min(self.selected, max(items_len - 1, 0))
-        detail = f"{len(self.channels)} canales | {len(self.tracks)} tracks"
+        detail = f"{len(self.channels)} channels | {len(self.tracks)} tracks"
         if self.channel_filter:
             detail += f" | carpeta: {self.channel_filter}"
         if self.query:
@@ -799,7 +850,7 @@ class Tui(RenderMixin, PlayerMixin):
         if self.tag_filter:
             detail += f" | tag:{self.tag_filter}"
         if self.now_playing and self.player.is_playing():
-            detail += f" | Sonando: {self.now_playing}"
+            detail += f" | Playing: {self.now_playing}"
         if self.watch_enabled:
             detail += " | watch:on"
         if self.repeat_mode:
@@ -864,7 +915,7 @@ class Tui(RenderMixin, PlayerMixin):
                 self.watch_last_seen[channel] = since
             if since is None:
                 if not background:
-                    self.status = "Aun no hay base local para comparar"
+                    self.status = "No local baseline yet"
                     self.dirty = True
                 return
 
@@ -876,17 +927,17 @@ class Tui(RenderMixin, PlayerMixin):
 
             if not new_count:
                 if not background:
-                    self.status = f"Sin novedades en {channel}"
+                    self.status = f"No new tracks in {channel}"
                     self.dirty = True
                 return
 
             track = latest_for_channel(conn, channel)
 
         title = track.display_title if track else channel
-        message = f"{channel}: {new_count} cancion(es) nueva(s)"
+        message = f"{channel}: {new_count} new track(s)"
         notify_user("TG Music", f"{message}\n{title}")
-        self.cache_line = f"Cache: nueva musica en {channel}"
-        self.status = f"Nueva musica: {new_count} track(s) en {channel}"
+        self.cache_line = f"Cache: new music in {channel}"
+        self.status = f"New music: {new_count} track(s) in {channel}"
         self.dirty = True
 
     def build_browser_rows(self) -> list[dict[str, object]]:
@@ -1014,7 +1065,7 @@ class Tui(RenderMixin, PlayerMixin):
         old_query = self.query
         try:
             height, width = self.screen.getmaxyx()
-            prompt = "Buscar: "
+            prompt = "Search: "
             last_reload_len = -1
             while True:
                 self.add(height - 1, 0, " " * max(width - 1, 0))
@@ -1102,15 +1153,15 @@ class Tui(RenderMixin, PlayerMixin):
                 self.init_colors()
                 self.status = f"Theme: {get_theme(theme_name).name}"
             else:
-                self.status = f"Theme desconocido: {theme_name}"
+                self.status = f"Unknown theme: {theme_name}"
         elif cmd == "vol" and args:
             try:
                 v = int(args[0])
                 self.volume = max(0, min(v, 150))
                 self.player.set_volume(self.volume)
-                self.status = f"Volumen: {self.volume}%"
+                self.status = f"Volume: {self.volume}%"
             except ValueError:
-                self.status = "Volumen debe ser numerico"
+                self.status = "Volume must be numeric"
         elif cmd == "help":
             self.toggle_help()
         elif cmd == "mini":
@@ -1148,9 +1199,9 @@ class Tui(RenderMixin, PlayerMixin):
                 self.status = "Uso: :rm <tag_name>"
         elif cmd == "themes":
             themes_list = ", ".join(list_themes())
-            self.status = f"Temas: {themes_list}"
+            self.status = f"Themes: {themes_list}"
         else:
-            self.status = f"Comando no reconocido: {cmd} (? para ayuda)"
+            self.status = f"Unknown command: {cmd} (? for help)"
 
     def input_prompt(self, prompt: str, max_len: int = 160) -> str:
         clear_terminal_images()
@@ -1208,14 +1259,14 @@ class Tui(RenderMixin, PlayerMixin):
             pass
 
     def add_channel_prompt(self) -> None:
-        channel = self.input_prompt("Canal URL/@username: ")
+        channel = self.input_prompt("Channel URL/@username: ")
         if not channel:
-            self.status = "Agregar canal cancelado"
+            self.status = "Add channel cancelled"
             self.dirty = True
             return
         limit_raw = self.input_prompt("Mensajes a revisar [300]: ", max_len=8)
         limit = int(limit_raw) if limit_raw.isdigit() else 300
-        self.status = f"Escaneando {channel}..."
+        self.status = f"Scanning {channel}..."
         self.draw()
         try:
             count = asyncio.run(scan_channel(channel, limit))
@@ -1227,19 +1278,19 @@ class Tui(RenderMixin, PlayerMixin):
             self.reload()
             self.status = f"Added {self.channel_filter}: {count} tracks"
         except Exception as exc:
-            self.status = f"Error agregando canal: {exc}"
+            self.status = f"Error adding channel: {exc}"
         self.dirty = True
 
     def enqueue_selected(self) -> None:
         if self.view == "channels":
-            self.status = "Abre una carpeta antes de encolar tracks"
+            self.status = "Open a folder before queueing tracks"
             self.dirty = True
             return
         if not self.tracks:
             return
         track = self.tracks[self.selected]
         if self.current_track and self.current_track.id == track.id:
-            self.status = "Ese track ya esta sonando"
+            self.status = "That track is already playing"
             self.dirty = True
             return
         if track.id not in self.play_queue:
@@ -1251,7 +1302,7 @@ class Tui(RenderMixin, PlayerMixin):
 
     def download_missing_prompt(self) -> None:
         if self.download_missing_thread and self.download_missing_thread.is_alive():
-            self.status = "Ya hay una descarga masiva en curso"
+            self.status = "A bulk download is already running"
             self.dirty = True
             return
         if self.view == "channels":
@@ -1265,7 +1316,7 @@ class Tui(RenderMixin, PlayerMixin):
         else:
             channel = self.channel_filter
 
-        self.status = "Descargando faltantes..."
+        self.status = "Downloading missing tracks..."
         self.dirty = True
         self.download_missing_thread = threading.Thread(
             target=self.run_download_missing_worker,
@@ -1279,23 +1330,23 @@ class Tui(RenderMixin, PlayerMixin):
             with connect() as conn:
                 tracks = list_uncached_tracks(conn, limit=5000, channel=channel)
             if not tracks:
-                self.cache_line = "Cache: No hay canciones faltantes"
-                self.status = "No hay canciones faltantes"
+                self.cache_line = "Cache: No missing tracks"
+                self.status = "No missing tracks"
                 return
-            self.cache_line = f"Cache: Descargando faltantes ({len(tracks)})..."
+            self.cache_line = f"Cache: Downloading missing tracks ({len(tracks)})..."
             asyncio.run(cache_tracks_async(tracks, workers=2))
-            self.cache_line = f"Cache: Completado ({len(tracks)})"
-            self.status = "Descarga de faltantes completa"
+            self.cache_line = f"Cache: Complete ({len(tracks)})"
+            self.status = "Missing track download complete"
             self.reload()
         except Exception as exc:
-            self.cache_line = "Cache: Error descargando faltantes"
-            self.status = f"Error descargando faltantes: {exc}"
+            self.cache_line = "Cache: Error downloading missing tracks"
+            self.status = f"Error downloading missing tracks: {exc}"
         finally:
             self.dirty = True
 
     def check_new_music_prompt(self) -> None:
         if self.new_music_thread and self.new_music_thread.is_alive():
-            self.status = "Ya hay una verificacion en curso"
+            self.status = "A check is already running"
             self.dirty = True
             return
         if self.view == "channels":
@@ -1309,10 +1360,10 @@ class Tui(RenderMixin, PlayerMixin):
         else:
             channel = self.channel_filter
         if not channel:
-            self.status = "No hay canal activo para verificar"
+            self.status = "No active channel to check"
             self.dirty = True
             return
-        self.status = f"Verificando novedades en {channel}..."
+        self.status = f"Checking for updates in {channel}..."
         self.dirty = True
         self.new_music_thread = threading.Thread(
             target=self.run_new_music_check_worker,
@@ -1325,7 +1376,7 @@ class Tui(RenderMixin, PlayerMixin):
         try:
             self.check_new_music_for_channel(channel, background=False)
         except Exception as exc:
-            self.status = f"Error verificando novedades: {exc}"
+            self.status = f"Error checking updates: {exc}"
         finally:
             self.dirty = True
 
@@ -1336,7 +1387,7 @@ class Tui(RenderMixin, PlayerMixin):
             return
         track_id = self.tracks[self.selected].id
         if track_id not in self.play_queue:
-            self.status = "Selecciona un track en cola para reordenarlo"
+            self.status = "Select a queued track to reorder it"
             self.dirty = True
             return
         index = self.play_queue.index(track_id)
@@ -1365,7 +1416,7 @@ class Tui(RenderMixin, PlayerMixin):
 
         if self.split_mode:
             if not self.channels:
-                self.status = "No hay canales. Usa a para agregar uno."
+                self.status = "No channels. Press a to add one."
                 self.dirty = True
                 return
             if 0 <= self.selected < len(self.channels):
@@ -1382,7 +1433,7 @@ class Tui(RenderMixin, PlayerMixin):
         if self.view == "channels":
             item = self.current_browser_item()
             if item is None:
-                self.status = "No hay canales. Usa a para agregar uno."
+                self.status = "No channels. Press a to add one."
                 self.dirty = True
                 return
             if item.get("kind") == "track":
@@ -1398,7 +1449,7 @@ class Tui(RenderMixin, PlayerMixin):
             if item.get("kind") == "local":
                 chosen = self.browse_folder()
                 if not chosen:
-                    self.status = "Cancelado"
+                    self.status = "Cancelled"
                     self.dirty = True
                     return
                 try:
@@ -1408,7 +1459,7 @@ class Tui(RenderMixin, PlayerMixin):
                     self.dirty = True
                     return
                 if not local_tracks:
-                    self.status = "No hay archivos de audio en esa carpeta"
+                    self.status = "No audio files in that folder"
                     self.dirty = True
                     return
                 self.local_folder = chosen
@@ -1428,7 +1479,7 @@ class Tui(RenderMixin, PlayerMixin):
             channel = item["channel"]
         else:
             if not self.channels:
-                self.status = "No hay canales. Usa a para agregar uno."
+                self.status = "No channels. Press a to add one."
                 self.dirty = True
                 return
             channel = self.channels[self.selected]
@@ -1451,13 +1502,13 @@ class Tui(RenderMixin, PlayerMixin):
                 else:
                     channel = str(item["channel"])
         if not channel:
-            raw = self.input_prompt("Canal a escanear: ")
+            raw = self.input_prompt("Channel to scan: ")
             channel = normalize_channel(raw) if raw else None
         if not channel:
-            self.status = "No hay canal seleccionado"
+            self.status = "No channel selected"
             self.dirty = True
             return
-        limit_raw = self.input_prompt("Mensajes extra a revisar [300]: ", max_len=8)
+        limit_raw = self.input_prompt("Extra messages to scan [300]: ", max_len=8)
         limit = int(limit_raw) if limit_raw.isdigit() else 300
         self.status = f"Scanning more from {channel}..."
         self.draw()
@@ -1468,7 +1519,7 @@ class Tui(RenderMixin, PlayerMixin):
             self.reload()
             self.status = f"Scan complete: {count} tracks in {channel}"
         except Exception as exc:
-            self.status = f"Error escaneando canal: {exc}"
+            self.status = f"Error scanning channel: {exc}"
         self.dirty = True
 
 
@@ -1478,4 +1529,18 @@ def run_tui() -> None:
         show_welcome()
         print("Run 'tg-music init' to configure, then 'tg-music tui' to start.")
         return
-    wrapper(lambda screen: Tui(screen).run())
+
+    import traceback as _tb
+    import sys as _sys
+
+    def _safe_wrapper(screen):
+        try:
+            Tui(screen).run()
+        except SystemExit:
+            pass
+        except Exception as e:
+            curses.endwin()
+            print(f"Error: {e}", file=_sys.stderr)
+            _tb.print_exc(file=_sys.stderr)
+
+    wrapper(_safe_wrapper)

@@ -8,6 +8,41 @@ from .models import format_duration
 
 
 class RenderSplitMixin:
+    def draw_split_playback_tick(self) -> bool:
+        if self.current_track is None or self.play_start_time is None:
+            return False
+        height, width = self.screen.getmaxyx()
+        body_top = 3
+        sep1 = max(width // 3, 20)
+        sep2 = 2 * sep1 + 1
+        if sep2 >= width - 5:
+            sep2 = width - 6
+        p3_start = sep2 + 1
+        p3_w = max(width - p3_start - 1, 0)
+        body_h = max(height - body_top - 2, 1)
+        if p3_w <= 5:
+            return False
+
+        row = body_top + 1
+        if self.current_track.performer:
+            row += 1
+        if row >= body_top + body_h:
+            return False
+
+        elapsed = int(time.time() - self.play_start_time)
+        duration = self.current_track.duration or 0
+        elapsed = min(elapsed, duration) if duration > 0 else elapsed
+        elapsed_str = format_duration(elapsed)
+        dur_str = format_duration(duration)
+        bar_w = max(p3_w - len(elapsed_str) - len(dur_str) - 4, 6)
+        bar = self._make_progress_bar(elapsed, duration, bar_w)
+        text = f"{elapsed_str} {bar} {dur_str}"
+        attr = self.color_attr(self.color_success, -1)
+        self.screen.addnstr(row, p3_start + 1, " " * max(p3_w - 2, 0), max(p3_w - 2, 0), attr)
+        self.screen.addnstr(row, p3_start + 1, text[: max(p3_w - 2, 0)], max(p3_w - 2, 0), attr)
+        self.screen.refresh()
+        return True
+
     def draw_split(self) -> None:
         self.screen.erase()
         self.cover_graphics_pos = None
@@ -115,13 +150,13 @@ class RenderSplitMixin:
             dur = format_duration(track.duration)
 
             if is_playing:
-                status_label = " [Sonando]"
+                status_label = " [Playing]"
             elif is_caching:
-                status_label = " [Cacheando]"
+                status_label = " [Caching]"
             elif track.local_path:
-                status_label = " [Caché]"
+                status_label = " [Cached]"
             else:
-                status_label = " [Remoto]"
+                status_label = " [Remote]"
 
             line = f"{playing}{cache} {track.id:4d} {dur:>5} {track.display_title}{status_label}"
             self.screen.addnstr(y, p2_start, line[:max(p2_w - 1, 0)], max(p2_w - 1, 0), attr)
@@ -250,26 +285,26 @@ class RenderSplitMixin:
         if self.split_panel == 0:
             hints = [
                 self.keycap("Enter", "abrir"),
-                self.keycap("Space", "expandir"),
-                self.keycap("a", "agregar"),
-                self.keycap("u", "escanear"),
+                self.keycap("Space", "expand"),
+                self.keycap("a", "add"),
+                self.keycap("u", "scan"),
                 self.keycap("Tab", "panel"),
-                self.keycap("?", "ayuda"),
+                self.keycap("?", "help"),
             ]
         elif self.split_panel == 1:
             hints = [
                 self.keycap("Enter", "play"),
-                self.keycap("e", "cola"),
+                self.keycap("e", "queue"),
                 self.keycap("f", "fav"),
                 self.keycap("t", "tag"),
-                self.keycap("L", "letras"),
+                self.keycap("L", "lyrics"),
                 self.keycap("Tab", "panel"),
-                self.keycap("?", "ayuda"),
+                self.keycap("?", "help"),
             ]
         else:
             hints = [
                 self.keycap("Tab", "panel"),
-                self.keycap("?", "ayuda"),
+                self.keycap("?", "help"),
             ]
 
         hints_str = "  ".join(hints)

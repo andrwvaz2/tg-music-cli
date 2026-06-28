@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         ensure_dirs()
         return args.func(args)
     except KeyboardInterrupt:
-        print("\nCancelado.", file=sys.stderr)
+        print("\nCancelled.", file=sys.stderr)
         return 130
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -71,191 +71,191 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tg-music")
     sub = parser.add_subparsers()
 
-    init = sub.add_parser("init", help="Configura api_id y api_hash de Telegram")
+    init = sub.add_parser("init", help="Configure Telegram api_id and api_hash")
     init.set_defaults(func=cmd_init)
 
-    scan = sub.add_parser("scan", help="Escanea audios de un canal")
-    scan.add_argument("channel", help="URL, @usuario o username del canal")
-    scan.add_argument("--limit", type=int, default=300, help="Mensajes a revisar")
+    scan = sub.add_parser("scan", help="Scan audio from a channel")
+    scan.add_argument("channel", help="Channel URL, @username, or username")
+    scan.add_argument("--limit", type=int, default=300, help="Messages to scan")
     scan.add_argument(
         "--cache",
         action="store_true",
-        help="Descarga al cache los audios encontrados que aun falten",
+        help="Download newly found missing audio to cache",
     )
     scan.set_defaults(func=cmd_scan)
 
-    add_channel = sub.add_parser("add-channel", help="Agrega/escanea un canal de musica")
-    add_channel.add_argument("channel", help="URL, @usuario o username del canal")
-    add_channel.add_argument("--limit", type=int, default=300, help="Mensajes a revisar")
-    add_channel.add_argument("--cache", action="store_true", help="Descarga al cache lo encontrado")
+    add_channel = sub.add_parser("add-channel", help="Add/scan a music channel")
+    add_channel.add_argument("channel", help="Channel URL, @username, or username")
+    add_channel.add_argument("--limit", type=int, default=300, help="Messages to scan")
+    add_channel.add_argument("--cache", action="store_true", help="Download found tracks to cache")
     add_channel.set_defaults(func=cmd_scan)
 
-    channels = sub.add_parser("channels", help="Lista canales agregados")
+    channels = sub.add_parser("channels", help="List added channels")
     channels.set_defaults(func=cmd_channels)
 
-    remove_channel_cmd = sub.add_parser("remove-channel", help="Elimina un canal de la base de datos")
-    remove_channel_cmd.add_argument("channel", help="Username del canal a eliminar")
+    remove_channel_cmd = sub.add_parser("remove-channel", help="Remove a channel from the database")
+    remove_channel_cmd.add_argument("channel", help="Username of the channel to remove")
     remove_channel_cmd.set_defaults(func=cmd_remove_channel)
 
-    list_cmd = sub.add_parser("list", help="Lista canciones indexadas")
+    list_cmd = sub.add_parser("list", help="List indexed tracks")
     list_cmd.add_argument("--limit", type=int, default=50)
-    list_cmd.add_argument("--json", action="store_true", help="Salida en formato JSON")
-    list_cmd.add_argument("--favorites", action="store_true", help="Solo favoritos")
-    list_cmd.add_argument("--tag", type=str, help="Filtrar por tag")
+    list_cmd.add_argument("--json", action="store_true", help="Output JSON")
+    list_cmd.add_argument("--favorites", action="store_true", help="Favorites only")
+    list_cmd.add_argument("--tag", type=str, help="Filter by tag")
     list_cmd.set_defaults(func=cmd_list)
 
-    search = sub.add_parser("search", help="Busca canciones indexadas")
+    search = sub.add_parser("search", help="Search indexed tracks")
     search.add_argument("query")
     search.add_argument("--limit", type=int, default=50)
-    search.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    search.add_argument("--json", action="store_true", help="Output JSON")
     search.set_defaults(func=cmd_search)
 
-    play = sub.add_parser("play", help="Descarga si hace falta y reproduce por id")
+    play = sub.add_parser("play", help="Download if needed and play by id")
     play.add_argument("id", type=int)
     play.set_defaults(func=cmd_play)
 
-    latest = sub.add_parser("play-latest", help="Reproduce el audio mas reciente de un canal indexado")
+    latest = sub.add_parser("play-latest", help="Play the latest audio from an indexed channel")
     latest.add_argument("channel")
     latest.set_defaults(func=cmd_play_latest)
 
-    random_play = sub.add_parser("random", help="Reproduce una cancion al azar")
-    random_play.add_argument("--limit", type=int, default=1, help="Numero de canciones")
+    random_play = sub.add_parser("random", help="Play a random track")
+    random_play.add_argument("--limit", type=int, default=1, help="Number of tracks")
     random_play.set_defaults(func=cmd_random)
 
-    cache = sub.add_parser("cache", help="Descarga canciones indexadas al cache")
-    cache.add_argument("channel", nargs="?", help="Canal opcional para limitar la descarga")
-    cache.add_argument("--limit", type=int, default=50, help="Maximo de canciones a descargar")
-    cache.add_argument("--workers", type=int, default=1, help="Descargas paralelas, maximo recomendado 3")
+    cache = sub.add_parser("cache", help="Download indexed tracks to cache")
+    cache.add_argument("channel", nargs="?", help="Optional channel to limit downloads")
+    cache.add_argument("--limit", type=int, default=50, help="Maximum tracks to download")
+    cache.add_argument("--workers", type=int, default=1, help="Parallel downloads, recommended max 3")
     cache.set_defaults(func=cmd_cache)
 
     watch = sub.add_parser(
         "watch",
-        help="Vigila canales indexados y avisa cuando aparezca musica nueva",
+        help="Watch indexed channels and notify when new music appears",
     )
-    watch.add_argument("channel", nargs="*", help="Canales opcionales; si no, vigila todos")
-    watch.add_argument("--interval", type=int, default=300, help="Segundos entre revisiones")
-    watch.add_argument("--once", action="store_true", help="Revisa una vez y sale")
+    watch.add_argument("channel", nargs="*", help="Optional channels; watches all if omitted")
+    watch.add_argument("--interval", type=int, default=300, help="Seconds between checks")
+    watch.add_argument("--once", action="store_true", help="Check once and exit")
     watch.set_defaults(func=cmd_watch)
 
-    ignore = sub.add_parser("ignore", help="Ignora canciones y borra su cache local")
-    ignore.add_argument("ids", nargs="+", type=int, help="IDs de canciones a ignorar")
+    ignore = sub.add_parser("ignore", help="Ignore tracks and delete their local cache")
+    ignore.add_argument("ids", nargs="+", type=int, help="Track IDs to ignore")
     ignore.set_defaults(func=cmd_ignore)
 
-    unignore = sub.add_parser("unignore", help="Quita canciones de la lista ignorada")
-    unignore.add_argument("ids", nargs="+", type=int, help="IDs de canciones a restaurar")
+    unignore = sub.add_parser("unignore", help="Remove tracks from the ignored list")
+    unignore.add_argument("ids", nargs="+", type=int, help="Track IDs to restore")
     unignore.set_defaults(func=cmd_unignore)
 
-    ignored = sub.add_parser("ignored", help="Lista canciones ignoradas")
+    ignored = sub.add_parser("ignored", help="List ignored tracks")
     ignored.add_argument("--limit", type=int, default=50)
     ignored.set_defaults(func=cmd_ignored)
 
-    status = sub.add_parser("status", help="Muestra resumen de la biblioteca")
+    status = sub.add_parser("status", help="Show library summary")
     status.set_defaults(func=cmd_status)
 
-    cleanup = sub.add_parser("cleanup", help="Limpia archivos cacheados antiguos")
-    cleanup.add_argument("--max-age", type=int, default=30, help="Dias maximos de antiguedad")
+    cleanup = sub.add_parser("cleanup", help="Clean old cached files")
+    cleanup.add_argument("--max-age", type=int, default=30, help="Maximum age in days")
     cleanup.set_defaults(func=cmd_cleanup)
 
-    fav = sub.add_parser("favorite", help="Marca/desmarca un track como favorito")
-    fav.add_argument("ids", nargs="+", type=int, help="IDs de canciones")
+    fav = sub.add_parser("favorite", help="Toggle tracks as favorites")
+    fav.add_argument("ids", nargs="+", type=int, help="Track IDs")
     fav.set_defaults(func=cmd_favorite)
 
-    recent = sub.add_parser("recent", help="Muestra canciones reproducidas recientemente")
+    recent = sub.add_parser("recent", help="Show recently played tracks")
     recent.add_argument("--limit", type=int, default=20)
     recent.add_argument("--json", action="store_true")
     recent.set_defaults(func=cmd_recent)
 
-    top = sub.add_parser("top", help="Muestra las canciones mas reproducidas")
+    top = sub.add_parser("top", help="Show most played tracks")
     top.add_argument("--limit", type=int, default=20)
     top.add_argument("--json", action="store_true")
     top.set_defaults(func=cmd_top)
 
-    t = sub.add_parser("tag", help="Gestiona tags en canciones")
+    t = sub.add_parser("tag", help="Manage track tags")
     t_sub = t.add_subparsers()
-    t_add = t_sub.add_parser("add", help="Agrega un tag a un track")
+    t_add = t_sub.add_parser("add", help="Add a tag to a track")
     t_add.add_argument("track_id", type=int)
     t_add.add_argument("tag_name")
     t_add.set_defaults(func=cmd_tag_add)
-    t_rm = t_sub.add_parser("remove", help="Quita un tag de un track")
+    t_rm = t_sub.add_parser("remove", help="Remove a tag from a track")
     t_rm.add_argument("track_id", type=int)
     t_rm.add_argument("tag_name")
     t_rm.set_defaults(func=cmd_tag_remove)
-    t_ls = t_sub.add_parser("list", help="Lista tags disponibles")
+    t_ls = t_sub.add_parser("list", help="List available tags")
     t_ls.set_defaults(func=cmd_tag_list)
-    t_show = t_sub.add_parser("show", help="Muestra tags de un track")
+    t_show = t_sub.add_parser("show", help="Show tags for a track")
     t_show.add_argument("track_id", type=int)
     t_show.set_defaults(func=cmd_tag_show)
-    t_delete = t_sub.add_parser("delete", help="Elimina un tag completamente")
-    t_delete.add_argument("tag_name", help="Nombre del tag a eliminar")
+    t_delete = t_sub.add_parser("delete", help="Delete a tag completely")
+    t_delete.add_argument("tag_name", help="Tag name to delete")
     t_delete.set_defaults(func=cmd_tag_delete)
     t.set_defaults(func=cmd_tag_list)
 
-    pl = sub.add_parser("playlist", help="Gestiona playlists personales")
+    pl = sub.add_parser("playlist", help="Manage personal playlists")
     pl_sub = pl.add_subparsers()
-    pl_create = pl_sub.add_parser("create", help="Crea una playlist nueva")
-    pl_create.add_argument("name", help="Nombre de la playlist")
+    pl_create = pl_sub.add_parser("create", help="Create a new playlist")
+    pl_create.add_argument("name", help="Playlist name")
     pl_create.set_defaults(func=cmd_playlist_create)
-    pl_delete = pl_sub.add_parser("delete", help="Elimina una playlist")
-    pl_delete.add_argument("name", help="Nombre de la playlist")
+    pl_delete = pl_sub.add_parser("delete", help="Delete a playlist")
+    pl_delete.add_argument("name", help="Playlist name")
     pl_delete.set_defaults(func=cmd_playlist_delete)
-    pl_rename = pl_sub.add_parser("rename", help="Renombra una playlist")
-    pl_rename.add_argument("old_name", help="Nombre actual")
-    pl_rename.add_argument("new_name", help="Nuevo nombre")
+    pl_rename = pl_sub.add_parser("rename", help="Rename a playlist")
+    pl_rename.add_argument("old_name", help="Current name")
+    pl_rename.add_argument("new_name", help="New name")
     pl_rename.set_defaults(func=cmd_playlist_rename)
-    pl_list = pl_sub.add_parser("list", help="Lista todas las playlists")
+    pl_list = pl_sub.add_parser("list", help="List all playlists")
     pl_list.set_defaults(func=cmd_playlist_list)
-    pl_add = pl_sub.add_parser("add", help="Agrega tracks a una playlist")
-    pl_add.add_argument("name", help="Nombre de la playlist")
-    pl_add.add_argument("ids", nargs="+", type=int, help="IDs de canciones")
+    pl_add = pl_sub.add_parser("add", help="Add tracks to a playlist")
+    pl_add.add_argument("name", help="Playlist name")
+    pl_add.add_argument("ids", nargs="+", type=int, help="Track IDs")
     pl_add.set_defaults(func=cmd_playlist_add)
-    pl_rm = pl_sub.add_parser("remove", help="Quita tracks de una playlist")
-    pl_rm.add_argument("name", help="Nombre de la playlist")
-    pl_rm.add_argument("ids", nargs="+", type=int, help="IDs de canciones")
+    pl_rm = pl_sub.add_parser("remove", help="Remove tracks from a playlist")
+    pl_rm.add_argument("name", help="Playlist name")
+    pl_rm.add_argument("ids", nargs="+", type=int, help="Track IDs")
     pl_rm.set_defaults(func=cmd_playlist_remove)
-    pl_show = pl_sub.add_parser("show", help="Muestra tracks de una playlist")
-    pl_show.add_argument("name", help="Nombre de la playlist")
+    pl_show = pl_sub.add_parser("show", help="Show playlist tracks")
+    pl_show.add_argument("name", help="Playlist name")
     pl_show.set_defaults(func=cmd_playlist_show)
     pl.set_defaults(func=cmd_playlist_list)
 
-    export = sub.add_parser("export", help="Exporta una playlist a archivo m3u")
-    export.add_argument("output", help="Archivo de salida")
-    export.add_argument("--channel", help="Canal opcional")
+    export = sub.add_parser("export", help="Export a playlist to an m3u file")
+    export.add_argument("output", help="Output file")
+    export.add_argument("--channel", help="Optional channel")
     export.add_argument("--favorites", action="store_true")
-    export.add_argument("--tag", help="Tag opcional")
+    export.add_argument("--tag", help="Optional tag")
     export.add_argument("--limit", type=int, default=500)
     export.set_defaults(func=cmd_export)
 
-    import_cmd = sub.add_parser("import", help="Importa una playlist m3u")
-    import_cmd.add_argument("input_file", help="Archivo m3u de entrada")
+    import_cmd = sub.add_parser("import", help="Import an m3u playlist")
+    import_cmd.add_argument("input_file", help="Input m3u file")
     import_cmd.set_defaults(func=cmd_import)
 
-    share = sub.add_parser("share", help="Muestra link de Telegram para un track")
+    share = sub.add_parser("share", help="Show Telegram link for a track")
     share.add_argument("id", type=int)
     share.set_defaults(func=cmd_share)
 
-    lyrics_cmd = sub.add_parser("lyrics", help="Muestra letras de una cancion")
+    lyrics_cmd = sub.add_parser("lyrics", help="Show lyrics for a track")
     lyrics_cmd.add_argument("id", type=int)
     lyrics_cmd.set_defaults(func=cmd_lyrics)
 
-    vol = sub.add_parser("volume", help="Muestra o ajusta el volumen")
-    vol.add_argument("level", nargs="?", type=int, help="Volumen 0-150")
+    vol = sub.add_parser("volume", help="Show or set volume")
+    vol.add_argument("level", nargs="?", type=int, help="Volume 0-150")
     vol.set_defaults(func=cmd_volume)
 
-    settings_cmd = sub.add_parser("settings", help="Muestra o ajusta configuracion")
+    settings_cmd = sub.add_parser("settings", help="Show or change settings")
     settings_sub = settings_cmd.add_subparsers()
-    settings_show = settings_sub.add_parser("show", help="Muestra la configuracion actual")
+    settings_show = settings_sub.add_parser("show", help="Show current settings")
     settings_show.set_defaults(func=cmd_settings)
-    settings_set = settings_sub.add_parser("set", help="Ajusta un valor de configuracion")
-    settings_set.add_argument("key", choices=["volume", "crossfade", "theme"], help="Clave a ajustar")
-    settings_set.add_argument("value", help="Nuevo valor (para theme: dark, light, dracula, nord, etc.)")
+    settings_set = settings_sub.add_parser("set", help="Set a configuration value")
+    settings_set.add_argument("key", choices=["volume", "crossfade", "theme"], help="Key to set")
+    settings_set.add_argument("value", help="New value (for theme: dark, light, dracula, nord, etc.)")
     settings_set.set_defaults(func=cmd_settings_set)
     settings_cmd.set_defaults(func=cmd_settings)
 
-    play_folder = sub.add_parser("play-folder", help="Reproduce musica de una carpeta local")
-    play_folder.add_argument("folder", help="Ruta a la carpeta de musica")
-    play_folder.add_argument("--shuffle", action="store_true", help="Modo aleatorio")
-    play_folder.add_argument("--recursive", action="store_true", help="Escaneo recursivo")
-    play_folder.add_argument("--volume", type=int, help="Volumen (0-150)")
+    play_folder = sub.add_parser("play-folder", help="Play music from a local folder")
+    play_folder.add_argument("folder", help="Path to music folder")
+    play_folder.add_argument("--shuffle", action="store_true", help="Shuffle mode")
+    play_folder.add_argument("--recursive", action="store_true", help="Recursive scan")
+    play_folder.add_argument("--volume", type=int, help="Volume (0-150)")
     play_folder.set_defaults(func=cmd_play_folder)
 
     tui = sub.add_parser("tui", help="Abre la interfaz de terminal")
@@ -272,11 +272,11 @@ def cmd_init(_args: argparse.Namespace) -> int:
         raise RuntimeError("api_id debe ser numerico.")
     if not re.fullmatch(r"[0-9a-fA-F]{32}", api_hash):
         raise RuntimeError(
-            "api_hash invalido. Debe ser una cadena hexadecimal de 32 caracteres, "
+            "Invalid api_hash. It must be a 32-character hexadecimal string, "
             "no el token del bot ni el app short name."
         )
     save_config(api_id, api_hash)
-    print(f"\nConfig guardada en {CONFIG_FILE}")
+    print(f"\nConfig saved to {CONFIG_FILE}")
     print("Siguiente paso: tg-music scan https://t.me/Christian_Electronic --limit 300")
     return 0
 
@@ -309,7 +309,7 @@ def cmd_channels(_args: argparse.Namespace) -> int:
     with connect() as conn:
         channels = list_channels(conn)
     if not channels:
-        print("No hay canales agregados. Usa: tg-music add-channel <url>")
+        print("No channels added. Use: tg-music add-channel <url>")
         return 0
     for channel in channels:
         title = channel.title or channel.channel
@@ -322,9 +322,9 @@ def cmd_remove_channel(args: argparse.Namespace) -> int:
     with connect() as conn:
         removed = remove_channel(conn, args.channel)
     if removed:
-        print(f"Canal '{args.channel}' eliminado.")
+        print(f"Channel '{args.channel}' removed.")
     else:
-        print(f"No se encontro el canal '{args.channel}'.", file=sys.stderr)
+        print(f"Channel '{args.channel}' was not found.", file=sys.stderr)
         return 1
     return 0
 
@@ -344,9 +344,9 @@ def cmd_play(args: argparse.Namespace) -> int:
     with connect() as conn:
         track = get_track(conn, args.id)
     if track is None:
-        raise RuntimeError(f"No existe track con id {args.id}")
+        raise RuntimeError(f"Track with id {args.id} does not exist")
     if track.ignored:
-        raise RuntimeError("Esta cancion esta ignorada. Usa tg-music unignore ID para restaurarla.")
+        raise RuntimeError("This track is ignored. Use tg-music unignore ID to restore it.")
     path = asyncio.run(download_track(track, progress=print_download_progress))
     print()
     with connect() as conn:
@@ -361,12 +361,12 @@ def cmd_play_latest(args: argparse.Namespace) -> int:
     with connect() as conn:
         track = latest_for_channel(conn, channel)
     if track is None:
-        print("No hay audios indexados para ese canal. Escaneando primero...")
+        print("No indexed audio for that channel. Scanning first...")
         asyncio.run(scan_channel(channel, 100))
         with connect() as conn:
             track = latest_for_channel(conn, channel)
     if track is None:
-        raise RuntimeError("No encontre audios en ese canal.")
+        raise RuntimeError("No audio found in that channel.")
     path = asyncio.run(download_track(track, progress=print_download_progress))
     print()
     with connect() as conn:
@@ -388,7 +388,7 @@ def cmd_play_folder(args: argparse.Namespace) -> int:
     if not tracks:
         print("No se encontraron archivos de audio en esa carpeta.")
         return 0
-    print(f"Encontrados {len(tracks)} archivos de audio")
+    print(f"Found {len(tracks)} audio files")
     import random as rng
 
     if args.shuffle:
@@ -404,7 +404,7 @@ def cmd_random(args: argparse.Namespace) -> int:
     with connect() as conn:
         tracks = list_random_tracks(conn, limit=args.limit)
     if not tracks:
-        print("No hay canciones en la biblioteca.")
+        print("No tracks in the library.")
         return 0
     for track in tracks:
         print(f"Reproduciendo: {track.display_title}")
@@ -434,7 +434,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 watched_channels = channels
 
             if not watched_channels:
-                print("No hay canales para vigilar.")
+                print("No channels to watch.")
                 return 0
 
             for channel in watched_channels:
@@ -450,7 +450,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 )
                 if new_count:
                     seen[channel] = latest_message_id_for_channel(conn, channel)
-                    message = f"{channel}: {new_count} cancion(es) nueva(s)"
+                    message = f"{channel}: {new_count} new track(s)"
                     if newest_title:
                         message += f" | {newest_title}"
                     notify_user("TG Music", message)
@@ -481,7 +481,7 @@ def cmd_ignore(args: argparse.Namespace) -> int:
         for track_id in args.ids:
             track = get_track(conn, track_id)
             if track is None:
-                print(f"No existe track con id {track_id}", file=sys.stderr)
+                print(f"Track with id {track_id} does not exist", file=sys.stderr)
                 continue
             delete_cached_files(track)
             set_ignored(conn, track_id, True)
@@ -497,7 +497,7 @@ def cmd_unignore(args: argparse.Namespace) -> int:
         for track_id in args.ids:
             track = get_track(conn, track_id)
             if track is None:
-                print(f"No existe track con id {track_id}", file=sys.stderr)
+                print(f"Track with id {track_id} does not exist", file=sys.stderr)
                 continue
             set_ignored(conn, track_id, False)
             print(f"Restaurada: {track.display_title}")
@@ -509,7 +509,7 @@ def cmd_unignore(args: argparse.Namespace) -> int:
 def cmd_ignored(args: argparse.Namespace) -> int:
     with connect() as conn:
         tracks = list_ignored_tracks(conn, limit=args.limit)
-    print_tracks(tracks, show_ignored=True, empty_message="No hay canciones ignoradas.")
+    print_tracks(tracks, show_ignored=True, empty_message="No ignored tracks.")
     return 0
 
 
@@ -530,12 +530,12 @@ def cmd_status(_args: argparse.Namespace) -> int:
     cache_size_bytes = sum(f.stat().st_size for f in AUDIO_CACHE_DIR.rglob("*") if f.is_file())
     cache_size = format_bytes(cache_size_bytes)
 
-    print(f"Canales:        {len(channels)}")
+    print(f"Channels:       {len(channels)}")
     print(f"Tracks total:   {len(all_tracks)}")
     print(f"Cached:         {cached_count}")
-    print(f"Sin cache:      {len(uncached)}")
+    print(f"Uncached:       {len(uncached)}")
     print(f"Ignorados:      {ignored_count}")
-    print(f"Favoritos:      {len(favs)}")
+    print(f"Favorites:      {len(favs)}")
     print(f"Tags:           {len(tags)}")
     print(f"DB size:        {db_size}")
     print(f"Cache size:     {cache_size}")
@@ -555,7 +555,7 @@ def cmd_favorite(args: argparse.Namespace) -> int:
         for track_id in args.ids:
             track = get_track(conn, track_id)
             if track is None:
-                print(f"No existe track con id {track_id}", file=sys.stderr)
+                print(f"Track with id {track_id} does not exist", file=sys.stderr)
                 continue
             is_now_fav = toggle_favorite(conn, track_id)
             state = "favorito" if is_now_fav else "removido de favoritos"
@@ -570,7 +570,7 @@ def cmd_recent(args: argparse.Namespace) -> int:
         print(json.dumps([_track_to_dict(t) for t in tracks], ensure_ascii=False, indent=2))
     else:
         if not tracks:
-            print("No hay canciones reproducidas recientemente.")
+            print("No recently played tracks.")
             return 0
         for track in tracks:
             print(
@@ -587,7 +587,7 @@ def cmd_top(args: argparse.Namespace) -> int:
         print(json.dumps([_track_to_dict(t) for t in tracks], ensure_ascii=False, indent=2))
     else:
         if not tracks:
-            print("No hay canciones reproducidas aun.")
+            print("No played tracks yet.")
             return 0
         for rank, track in enumerate(tracks, 1):
             print(
@@ -601,7 +601,7 @@ def cmd_tag_add(args: argparse.Namespace) -> int:
     with connect() as conn:
         track = get_track(conn, args.track_id)
         if track is None:
-            print(f"No existe track con id {args.track_id}", file=sys.stderr)
+            print(f"Track with id {args.track_id} does not exist", file=sys.stderr)
             return 1
         tag_track(conn, args.track_id, args.tag_name)
         print(f"Tag '{args.tag_name}' agregado a: {track.display_title}")
@@ -612,7 +612,7 @@ def cmd_tag_remove(args: argparse.Namespace) -> int:
     with connect() as conn:
         track = get_track(conn, args.track_id)
         if track is None:
-            print(f"No existe track con id {args.track_id}", file=sys.stderr)
+            print(f"Track with id {args.track_id} does not exist", file=sys.stderr)
             return 1
         untag_track(conn, args.track_id, args.tag_name)
         print(f"Tag '{args.tag_name}' removido de: {track.display_title}")
@@ -623,7 +623,7 @@ def cmd_tag_list(_args: argparse.Namespace) -> int:
     with connect() as conn:
         tags = list_all_tags(conn)
     if not tags:
-        print("No hay tags creados.")
+        print("No tags created.")
         return 0
     print("Tags:", ", ".join(tags))
     return 0
@@ -633,7 +633,7 @@ def cmd_tag_show(args: argparse.Namespace) -> int:
     with connect() as conn:
         track = get_track(conn, args.track_id)
         if track is None:
-            print(f"No existe track con id {args.track_id}", file=sys.stderr)
+            print(f"Track with id {args.track_id} does not exist", file=sys.stderr)
             return 1
         tags = get_track_tags(conn, args.track_id)
     print(f"{track.display_title}: {', '.join(tags) if tags else '(sin tags)'}")
@@ -643,14 +643,14 @@ def cmd_tag_show(args: argparse.Namespace) -> int:
 def cmd_tag_delete(args: argparse.Namespace) -> int:
     with connect() as conn:
         remove_tag(conn, args.tag_name)
-    print(f"Tag '{args.tag_name}' eliminado.")
+    print(f"Tag '{args.tag_name}' deleted.")
     return 0
 
 
 def cmd_playlist_create(args: argparse.Namespace) -> int:
     with connect() as conn:
         pl_id = create_playlist(conn, args.name)
-    print(f"Playlist '{args.name}' creada (id: {pl_id})")
+    print(f"Playlist '{args.name}' created (id: {pl_id})")
     return 0
 
 
@@ -658,10 +658,10 @@ def cmd_playlist_delete(args: argparse.Namespace) -> int:
     with connect() as conn:
         pl = get_playlist_by_name(conn, args.name)
         if pl is None:
-            print(f"No existe playlist '{args.name}'", file=sys.stderr)
+            print(f"Playlist '{args.name}' does not exist", file=sys.stderr)
             return 1
         delete_playlist(conn, pl["id"])
-    print(f"Playlist '{args.name}' eliminada")
+    print(f"Playlist '{args.name}' deleted")
     return 0
 
 
@@ -669,7 +669,7 @@ def cmd_playlist_rename(args: argparse.Namespace) -> int:
     with connect() as conn:
         pl = get_playlist_by_name(conn, args.old_name)
         if pl is None:
-            print(f"No existe playlist '{args.old_name}'", file=sys.stderr)
+            print(f"Playlist '{args.old_name}' does not exist", file=sys.stderr)
             return 1
         rename_playlist(conn, pl["id"], args.new_name)
     print(f"Playlist '{args.old_name}' -> '{args.new_name}'")
@@ -680,9 +680,9 @@ def cmd_playlist_list(_args: argparse.Namespace) -> int:
     with connect() as conn:
         playlists = list_playlists(conn)
     if not playlists:
-        print("No hay playlists creadas.")
+        print("No playlists created.")
         return 0
-    print(f"{'ID':>4}  {'Tracks':>5}  Nombre")
+    print(f"{'ID':>4}  {'Tracks':>5}  Name")
     for pl in playlists:
         print(f"{pl['id']:4d}  {pl['count']:5d}  {pl['name']}")
     return 0
@@ -692,18 +692,18 @@ def cmd_playlist_add(args: argparse.Namespace) -> int:
     with connect() as conn:
         pl = get_playlist_by_name(conn, args.name)
         if pl is None:
-            print(f"No existe playlist '{args.name}'", file=sys.stderr)
+            print(f"Playlist '{args.name}' does not exist", file=sys.stderr)
             return 1
         added = 0
         for track_id in args.ids:
             track = get_track(conn, track_id)
             if track is None:
-                print(f"Track {track_id} no existe, saltando", file=sys.stderr)
+                print(f"Track {track_id} does not exist, skipping", file=sys.stderr)
                 continue
             add_to_playlist(conn, pl["id"], track_id)
             added += 1
             print(f"  + {track.display_title}")
-    print(f"Agregados: {added}")
+    print(f"Added: {added}")
     return 0
 
 
@@ -711,18 +711,18 @@ def cmd_playlist_remove(args: argparse.Namespace) -> int:
     with connect() as conn:
         pl = get_playlist_by_name(conn, args.name)
         if pl is None:
-            print(f"No existe playlist '{args.name}'", file=sys.stderr)
+            print(f"Playlist '{args.name}' does not exist", file=sys.stderr)
             return 1
         removed = 0
         for track_id in args.ids:
             track = get_track(conn, track_id)
             if track is None:
-                print(f"Track {track_id} no existe, saltando", file=sys.stderr)
+                print(f"Track {track_id} does not exist, skipping", file=sys.stderr)
                 continue
             remove_from_playlist(conn, pl["id"], track_id)
             removed += 1
             print(f"  - {track.display_title}")
-    print(f"Removidos: {removed}")
+    print(f"Removed: {removed}")
     return 0
 
 
@@ -730,11 +730,11 @@ def cmd_playlist_show(args: argparse.Namespace) -> int:
     with connect() as conn:
         pl = get_playlist_by_name(conn, args.name)
         if pl is None:
-            print(f"No existe playlist '{args.name}'", file=sys.stderr)
+            print(f"Playlist '{args.name}' does not exist", file=sys.stderr)
             return 1
         tracks = get_playlist_tracks(conn, pl["id"])
     if not tracks:
-        print(f"Playlist '{args.name}' vacia.")
+        print(f"Playlist '{args.name}' is empty.")
         return 0
     print(f"Playlist: {args.name} ({len(tracks)} tracks)")
     for i, track in enumerate(tracks, 1):
@@ -752,7 +752,7 @@ def cmd_export(args: argparse.Namespace) -> int:
             tag=getattr(args, "tag", None),
         )
     if not tracks:
-        print("No hay canciones para exportar.")
+        print("No tracks to export.")
         return 0
 
     output = Path(args.output)
@@ -765,14 +765,14 @@ def cmd_export(args: argparse.Namespace) -> int:
                 fh.write(f"{track.local_path}\n")
             else:
                 fh.write(f"{track.telegram_url}\n")
-    print(f"Playlist exportada: {len(tracks)} canciones -> {output}")
+    print(f"Playlist exported: {len(tracks)} tracks -> {output}")
     return 0
 
 
 def cmd_import(args: argparse.Namespace) -> int:
     input_file = Path(args.input_file)
     if not input_file.exists():
-        print(f"Archivo no encontrado: {input_file}", file=sys.stderr)
+        print(f"File not found: {input_file}", file=sys.stderr)
         return 1
 
     lines = input_file.read_text(encoding="utf-8").splitlines()
@@ -800,7 +800,7 @@ def cmd_import(args: argparse.Namespace) -> int:
                 from .db import upsert_tracks_batch
                 upsert_tracks_batch(conn, [item])
                 imported += 1
-    print(f"Importadas {imported} canciones desde {input_file}")
+    print(f"Imported {imported} tracks from {input_file}")
     return 0
 
 
@@ -808,7 +808,7 @@ def cmd_share(args: argparse.Namespace) -> int:
     with connect() as conn:
         track = get_track(conn, args.id)
     if track is None:
-        print(f"No existe track con id {args.id}", file=sys.stderr)
+        print(f"Track with id {args.id} does not exist", file=sys.stderr)
         return 1
     print(track.telegram_url)
     return 0
@@ -818,23 +818,23 @@ def cmd_lyrics(args: argparse.Namespace) -> int:
     with connect() as conn:
         track = get_track(conn, args.id)
     if track is None:
-        print(f"No existe track con id {args.id}", file=sys.stderr)
+        print(f"Track with id {args.id} does not exist", file=sys.stderr)
         return 1
-    print(f"Buscando letras: {track.display_title}...")
+    print(f"Searching lyrics: {track.display_title}...")
     result = fetch_lyrics(
         track.performer or track.channel_title,
         track.title or track.filename,
         track.duration,
     )
     if result is None:
-        print("No se encontraron letras para esta cancion.")
+        print("No lyrics found for this track.")
         return 1
     if result.synced:
         print(result.synced)
     elif result.plain:
         print(result.plain)
     else:
-        print("Letras no disponibles (solo metadata encontrada).")
+        print("Lyrics unavailable (metadata only).")
         print(f"  Album: {result.album or '?'}")
     return 0
 
@@ -844,9 +844,9 @@ def cmd_volume(args: argparse.Namespace) -> int:
     if args.level is not None:
         settings.volume = max(0, min(150, args.level))
         save_settings(settings)
-        print(f"Volumen ajustado a {settings.volume}")
+        print(f"Volume set to {settings.volume}")
     else:
-        print(f"Volumen actual: {settings.volume}")
+        print(f"Current volume: {settings.volume}")
     return 0
 
 
@@ -867,21 +867,21 @@ def cmd_settings_set(args: argparse.Namespace) -> int:
         try:
             settings.volume = max(0, min(150, int(value)))
         except ValueError:
-            print("Volumen debe ser un numero entero.", file=sys.stderr)
+            print("Volume must be an integer.", file=sys.stderr)
             return 1
     elif key == "crossfade":
         try:
             settings.crossfade = max(0, float(value))
         except ValueError:
-            print("Crossfade debe ser un numero.", file=sys.stderr)
+            print("Crossfade must be a number.", file=sys.stderr)
             return 1
     elif key == "theme":
         if value not in THEME_ORDER:
-            print(f"Theme invalido. Opciones: {', '.join(THEME_ORDER)}", file=sys.stderr)
+            print(f"Invalid theme. Options: {', '.join(THEME_ORDER)}", file=sys.stderr)
             return 1
         settings.theme = value
     save_settings(settings)
-    print(f"{key} ajustado a {getattr(settings, key)}")
+    print(f"{key} set to {getattr(settings, key)}")
     return 0
 
 
@@ -916,11 +916,11 @@ def cache_tracks(channel: str | None, limit: int, workers: int = 1) -> int:
     with connect() as conn:
         tracks = list_uncached_tracks(conn, limit=limit, channel=channel)
     if not tracks:
-        print("No hay canciones pendientes de cache.")
+        print("No tracks pending cache.")
         return 0
 
     workers = max(1, min(workers, 3))
-    print(f"Descargando {len(tracks)} canciones al cache con {workers} worker(s)...")
+    print(f"Downloading {len(tracks)} tracks to cache with {workers} worker(s)...")
 
     current_title = ""
 
@@ -951,14 +951,14 @@ def cache_tracks(channel: str | None, limit: int, workers: int = 1) -> int:
     downloaded = sum(1 for result in results if result.error is None)
     failed = len(results) - downloaded
 
-    print(f"\nCache terminado: {downloaded} OK, {failed} errores.")
+    print(f"\nCache complete: {downloaded} OK, {failed} errors.")
     return 1 if failed else 0
 
 
 def print_tracks(
     tracks: list,
     show_ignored: bool = False,
-    empty_message: str = "No hay canciones indexadas. Ejecuta tg-music scan <canal>.",
+    empty_message: str = "No indexed tracks. Run tg-music scan <channel>.",
 ) -> None:
     if not tracks:
         print(empty_message)

@@ -16,7 +16,7 @@ LOCAL_CHANNEL_TITLE = "Local"
 def scan_folder(path: str | Path, recursive: bool = False) -> list[Track]:
     folder = Path(path).expanduser().resolve()
     if not folder.is_dir():
-        raise FileNotFoundError(f"No existe la carpeta: {folder}")
+        raise FileNotFoundError(f"Folder does not exist: {folder}")
 
     files: list[Path] = []
     if recursive:

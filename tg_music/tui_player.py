@@ -43,7 +43,7 @@ class PlayerMixin:
         from .local import LOCAL_CHANNEL
         if selected_index is not None:
             self.selected = selected_index
-        self.status = f"Preparando cache: {track.display_title}"
+        self.status = f"Preparing cache: {track.display_title}"
         self.draw()
         try:
             if track.channel == LOCAL_CHANNEL:
@@ -55,7 +55,7 @@ class PlayerMixin:
                 finally:
                     self.downloading_track_id = None
             if not path:
-                self.status = "No se pudo obtener el archivo"
+                self.status = "Could not get the audio file"
                 return
             self.cover_path = extract_embedded_cover(path, track)
             if not self.cover_path and track.channel != LOCAL_CHANNEL:
@@ -70,8 +70,8 @@ class PlayerMixin:
             self.current_track = track
             self.current_audio_path = path
             self.now_playing = track.display_title
-            self.cache_line = "Cache: Listo"
-            self.status = f"Sonando: {track.display_title}"
+            self.cache_line = "Cache: Ready"
+            self.status = f"Playing: {track.display_title}"
             if track.channel != LOCAL_CHANNEL:
                 with connect() as conn:
                     record_play(conn, track.id)
@@ -88,14 +88,14 @@ class PlayerMixin:
             self.start_precache_after_selection()
         except Exception as exc:
             self.status = f"Error: {exc}"
+            self.dirty = True
         finally:
-            self.screen.clear()
             self.cover_graphics_draw_key = None
 
     def stop_playback(self) -> None:
         self.manual_stop = True
         self.player.stop()
-        self.status = "Reproduccion detenida"
+        self.status = "Playback stopped"
         self.play_start_time = None
         self.last_elapsed_seconds = 0
         self.dirty = True
@@ -143,7 +143,7 @@ class PlayerMixin:
                 track = self.tracks[0]
                 self.play_track(track, selected_index=0)
                 return
-            self.status = "Fin de la lista"
+            self.status = "End of list"
             self.current_track = None
             self.now_playing = ""
             self.current_audio_path = None
@@ -228,7 +228,7 @@ class PlayerMixin:
             return
         for track in candidates:
             self.precache_ids.add(track.id)
-        self.cache_line = f"Pre-descargando: {len(candidates)} track(s) en segundo plano..."
+        self.cache_line = f"Pre-caching: {len(candidates)} track(s) in background..."
         self.dirty = True
         self.precache_thread = threading.Thread(
             target=self.run_precache_worker,
@@ -244,8 +244,8 @@ class PlayerMixin:
         try:
             asyncio.run(run())
             self.reload()
-            self.cache_line = f"Pre-descarga completa: {len(tracks)} track(s)"
+            self.cache_line = f"Pre-cache complete: {len(tracks)} track(s)"
         except Exception as exc:
-            self.cache_line = f"Pre-descarga error: {exc}"
+            self.cache_line = f"Pre-cache error: {exc}"
         finally:
             self.dirty = True

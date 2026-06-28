@@ -1,6 +1,8 @@
 # tg-music-cli
 
-Reproductor de música para canales de Telegram desde la terminal.
+![tg-music banner](assets/banner.jpg)
+
+Terminal music player for Telegram channels.
 
 ```text
 ┌──────────────────────────────────────────────────────────┐
@@ -17,147 +19,153 @@ Reproductor de música para canales de Telegram desde la terminal.
 │     3. Run configuration command:                        │
 │     $ tg-music init                                      │
 │                                                          │
-├──────────────────────────────────────────────────────────┤
-│                                                          │
-│                        QUICKSTART                        │
-│                                                          │
-│   Scan a channel:  tg-music scan @channel --limit 300    │
-│   Open the player:  tg-music tui                         │
-│   Cache tracks:  tg-music cache @channel --limit 50      │
-│                                                          │
 └──────────────────────────────────────────────────────────┘
 ```
 
-## Características
+## Features
 
-* **Navegación tipo carpetas:** Explora los canales de Telegram indexados como directorios locales.
-* **Precarga inteligente:** Descarga en segundo plano los siguientes 3 tracks de la lista para evitar cortes.
-* **Portadas embebidas:** Renderizado de carátulas en la terminal mediante `chafa` (con soporte para imágenes reales en Kitty/Ghostty y caracteres en otros terminales).
-* **Base de datos local:** Almacenamiento rápido en SQLite para historial, favoritos y tags.
-* **Múltiples vistas:** Vista clásica, Split View (3 paneles) y Mini View (reproductor compacto).
-* **Bloqueo de canciones:** Permite ignorar pistas para que no se muestren ni se descarguen en masa.
+* **Folder-like Navigation:** Browse indexed Telegram channels as if they were local directories.
+* **Smart Pre-caching:** Background download of the next 3 tracks in the play queue to prevent playback gaps.
+* **Embedded Cover Art:** Album art rendering in the terminal using `chafa` (with high-resolution support in Kitty/Ghostty and character-art fallback in other terminals).
+* **Local Database:** Fast SQLite integration for tracking playback history, favorites, and tags.
+* **Multiple Layouts:** Classic view, 3-panel Split View (`P`), and a compact single-line Mini View (`M`).
+* **Blocklist:** Ignore tracks to automatically prevent them from showing up or being bulk-downloaded.
 
 ---
 
-## Requisitos
+## Requirements
 
 * Python 3.11+
-* `uv` (opcional, recomendado para ejecución rápida)
-* `mpv` (backend de audio)
-* `chafa` (opcional, para visualización de portadas)
-* Una app de Telegram creada en `https://my.telegram.org` para obtener `api_id` y `api_hash`.
+* `uv` (optional, recommended for fast execution)
+* `mpv` (audio playback backend)
+* `chafa` (optional, for cover art rendering)
+* A Telegram application registered at `https://my.telegram.org` to obtain `api_id` and `api_hash`.
 
 ---
 
-## Inicio rápido
+## Quickstart
 
-Si usas `uv`:
+If you are using `uv`:
 
 ```bash
-# Acceder al proyecto
+# Navigate to the project directory
 cd ~/Proyectos/tg-music-cli
 
-# Configurar credenciales de Telegram
+# Configure Telegram credentials
 uv run tg-music init
 
-# Escanear un canal
+# Scan a music channel
 uv run tg-music scan https://t.me/Christian_Electronic --limit 300
 
-# Abrir el reproductor
+# Start the interactive TUI player
 uv run tg-music tui
 ```
 
-*Nota: En el primer inicio, la API de Telegram solicitará tu número de teléfono y el código de verificación. La sesión se almacena de forma local en `~/.local/share/tg-music/session.session`.*
+*Note: On first run, the Telegram API will ask for your phone number and verification code. The session is safely stored locally at `~/.local/share/tg-music/session.session`.*
 
 ---
 
-## Diseños de la TUI
+## TUI Layouts
 
-### Split View (Teclar `P`)
-Divide la interfaz en tres columnas:
-1. **Channels:** Lista de canales agregados y carpetas locales.
-2. **Tracks:** Canciones del canal seleccionado.
-3. **Details:** Pista actual, carátula y cola de reproducción.
+### Split View (Press `P`)
+Splits the interface into three columns:
+1. **Channels:** List of added channels and local folders.
+2. **Tracks:** Songs inside the selected channel.
+3. **Details:** Current track metadata, cover art, and play queue.
 
-### Mini View (Teclar `M`)
-Reduce la interfaz a una sola línea inferior que muestra el progreso, título actual, volumen y estado de reproducción.
+### Mini View (Press `M`)
+Reduces the TUI to a single bottom bar showing progress, track title, volume, and playback state.
 
 ---
 
-## Atajos de teclado
+## Keybindings
 
-### Navegación y reproducción
+### Navigation and Playback
 
-| Tecla | Acción |
+| Key | Action |
 |---|---|
-| `Flechas` / `j`/`k` | Mover cursor |
-| `Enter` | Abrir canal / reproducir canción |
-| `Space` / `→` | Expandir canal |
-| `Backspace` / `←` | Colapsar canal / volver a la lista de canales |
-| `s` | Detener reproducción |
-| `n` | Siguiente canción |
-| `+` / `-` | Ajustar volumen |
-| `/` | Buscar en la lista |
-| `r` | Refrescar listado |
-| `q` | Salir del reproductor |
+| `Arrows` / `j`/`k` | Move cursor |
+| `Enter` | Open channel / Play selected track |
+| `Space` / `→` | Expand channel |
+| `Backspace` / `←` | Collapse channel / Return to channels list |
+| `s` | Stop playback |
+| `n` | Next track |
+| `+` / `-` | Adjust volume |
+| `/` | Search in active list |
+| `r` | Refresh list |
+| `q` | Exit player |
 
-### Gestión y cola
+### Management and Queue
 
-| Tecla | Acción |
+| Key | Action |
 |---|---|
-| `e` | Encolar canción seleccionada |
-| `[` / `]` | Reordenar cola (subir / bajar) |
-| `f` | Marcar/desmarcar favorita |
-| `1` | Mostrar solo favoritas |
-| `t` | Editar tags del track seleccionado |
-| `L` | Mostrar/ocultar letras |
-| `m` | Descargar tracks faltantes de la vista actual |
-| `u` | Escanear canciones más antiguas del canal seleccionado |
-| `w` | Buscar novedades en el canal activo |
-| `W` | Alternar vigilancia en segundo plano |
-| `x` | Bloquear canción (borra caché y la salta en descargas) |
+| `e` | Enqueue selected track |
+| `[` / `]` | Move track up/down in the play queue |
+| `f` | Toggle favorite status |
+| `1` | Filter list by favorites |
+| `t` | Edit tags for selected track |
+| `L` | Toggle lyrics display |
+| `m` | Download all missing tracks in current view |
+| `u` | Scan older tracks in selected channel |
+| `w` | Check for updates in active channel |
+| `W` | Toggle background watcher daemon |
+| `x` | Ignore track (deletes local file and skips in future downloads) |
 
 ---
 
-## Comandos CLI
+## CLI Commands
 
-El comando `tg-music` permite gestionar el reproductor directamente desde la shell:
+The `tg-music` command allows managing the player directly from the shell:
 
-### Canales
+### Channels
 ```bash
-tg-music add-channel <URL_O_USER> --limit 300   # Guardar un canal
-tg-music channels                               # Listar canales guardados
-tg-music scan <URL_O_USER> --limit 300          # Indexar metadata
-tg-music scan <URL_O_USER> --cache              # Indexar y descargar audio
+tg-music add-channel <URL_OR_USER> --limit 300   # Add a channel
+tg-music channels                               # List saved channels
+tg-music scan <URL_OR_USER> --limit 300          # Index metadata
+tg-music scan <URL_OR_USER> --cache              # Index and download audio
 ```
 
-### Reproducción y Descarga
+### Playback and Downloads
 ```bash
-tg-music play <ID>                              # Reproducir un track específico
-tg-music play-latest <URL_O_USER>               # Reproducir último audio de un canal
-tg-music cache <URL_O_USER> --workers 2          # Descargar pistas faltantes
+tg-music play <ID>                              # Play a specific track
+tg-music play-latest <URL_OR_USER>               # Play latest track in a channel
+tg-music cache <URL_OR_USER> --workers 2          # Download missing tracks to cache
 ```
 
-### Gestión de Tags
+### Tags Management
 ```bash
-tg-music tag add <ID> <tag>                     # Asignar tag a una canción
-tg-music tag remove <ID> <tag>                  # Eliminar tag
-tg-music tag list                               # Listar todos los tags del sistema
-tg-music tag show <ID>                          # Mostrar tags de una canción
+tg-music tag add <ID> <tag>                     # Add a tag to a track
+tg-music tag remove <ID> <tag>                  # Remove a tag
+tg-music tag list                               # List all tags in the system
+tg-music tag show <ID>                          # Show tags of a track
 ```
 
-### Bloqueos y Favoritos
+### Ignoring & Favorites
 ```bash
-tg-music favorite <ID>                          # Alternar favorito
-tg-music ignore <ID>                            # Bloquear track (elimina el archivo local)
-tg-music unignore <ID>                          # Desbloquear track
-tg-music ignored                                # Listar canciones bloqueadas
+tg-music favorite <ID>                          # Toggle favorite status
+tg-music ignore <ID>                            # Ignore track (deletes local file)
+tg-music unignore <ID>                          # Stop ignoring track
+tg-music ignored                                # List ignored tracks
 ```
 
 ---
 
-## Ubicaciones de archivos
+## File Locations
 
-* **Caché de audio:** `~/.cache/tg-music/audio`
-* **Base de datos SQLite:** `~/.local/share/tg-music/library.sqlite3`
-* **Sesión de Telegram:** `~/.local/share/tg-music/session.session`
+* **Audio Cache:** `~/.cache/tg-music/audio`
+* **SQLite Database:** `~/.local/share/tg-music/library.sqlite3`
+* **Telegram Session:** `~/.local/share/tg-music/session.session`
+
+---
+
+## Contributions & Feedback
+
+Contributions, bug reports, and feature requests are welcome! Feel free to open an issue or submit a pull request on the GitHub repository.
+
+---
+
+## Disclaimer
+
+This software is provided for educational and personal use only. The developer does not host, distribute, or promote the download of copyrighted material. 
+
+The user is solely responsible for ensuring that accessing and playing content from Telegram channels through this tool complies with local laws and the platform's Terms of Service.

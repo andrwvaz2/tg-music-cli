@@ -185,7 +185,7 @@ class PlayerMixin:
             self.cover_lines = []
             self.cover_graphics = None
             self.cover_graphics_draw_key = None
-            from .tui_render import clear_terminal_images
+            from .render_base import clear_terminal_images
             clear_terminal_images()
         if track.id in self.play_queue:
             self.play_queue = [queued for queued in self.play_queue if queued != track.id]

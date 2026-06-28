@@ -44,7 +44,8 @@ from .models import Channel, Track, format_duration
 from .player import BackgroundPlayer
 from .shared import delete_cached_files, format_bytes, fuzzy_match, notify_user
 from .telegram_client import download_cover, download_track, normalize_channel, scan_channel, scan_channel_since
-from .tui_render import RenderMixin, clear_terminal_images, wrap
+from .tui_render import RenderMixin
+from .render_base import clear_terminal_images, wrap
 from .tui_player import PlayerMixin
 
 
@@ -630,15 +631,15 @@ class Tui(RenderMixin, PlayerMixin):
                 name = entry.name
 
                 if entry.is_dir():
-                    icon = "\U0001f4c1 "
+                    icon = "/ "
                     if name == "..":
-                        icon = "\u2b06 "
+                        icon = "^ "
                 else:
                     ext = entry.suffix.lower()
                     if ext in {".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"}:
-                        icon = "\u266b "
+                        icon = "* "
                     else:
-                        icon = "   "
+                        icon = "  "
 
                 line = f" {icon}{name}"
 

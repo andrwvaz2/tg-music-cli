@@ -3,82 +3,16 @@ from __future__ import annotations
 import os
 import re
 import sys
-import textwrap
-
-
-PIXEL_LETTERS: dict[str, list[str]] = {
-    "T": [
-        "#####",
-        "  #  ",
-        "  #  ",
-        "  #  ",
-        "  #  ",
-    ],
-    "G": [
-        " ### ",
-        "#    ",
-        "#  ##",
-        "#   #",
-        " ### ",
-    ],
-    "M": [
-        "#   #",
-        "## ##",
-        "# # #",
-        "#   #",
-        "#   #",
-    ],
-    "U": [
-        "#   #",
-        "#   #",
-        "#   #",
-        "#   #",
-        " ### ",
-    ],
-    "S": [
-        " ###",
-        "#   ",
-        " ## ",
-        "   #",
-        "### ",
-    ],
-    "I": [
-        "###",
-        " # ",
-        " # ",
-        " # ",
-        "###",
-    ],
-    "C": [
-        " ###",
-        "#   ",
-        "#   ",
-        "#   ",
-        " ###",
-    ],
-    " ": [
-        "     ",
-        "     ",
-        "     ",
-        "     ",
-        "     ",
-    ],
-    "-": [
-        "     ",
-        "     ",
-        "#####",
-        "     ",
-        "     ",
-    ],
-}
 
 GRADIENT = [
     (255, 170, 0),
-    (255, 140, 0),
-    (255, 100, 0),
-    (255, 60, 0),
-    (255, 30, 0),
-    (220, 0, 0),
+    (255, 145, 0),
+    (255, 120, 0),
+    (255, 95, 0),
+    (255, 70, 0),
+    (255, 45, 0),
+    (230, 20, 0),
+    (210, 0, 0),
 ]
 
 
@@ -105,32 +39,6 @@ def _pad(s: str, width: int) -> str:
     return s + " " * max(0, width - vis)
 
 
-def render_title(text: str) -> list[str]:
-    rows: list[str] = [""] * 5
-    for ch in text.upper():
-        glyph = PIXEL_LETTERS.get(ch, PIXEL_LETTERS[" "])
-        for i in range(5):
-            rows[i] += glyph[i] + " "
-    return rows
-
-
-def colorize_title(rows: list[str]) -> list[str]:
-    colored: list[str] = []
-    for row in rows:
-        parts: list[str] = []
-        col = 0
-        for ch in row:
-            if ch == "#":
-                gi = min(col // 1, len(GRADIENT) - 1)
-                r, g, b = GRADIENT[gi]
-                parts.append(f"{_ansi_fg(r, g, b)}\u2588{RESET}")
-            else:
-                parts.append(" ")
-            col += 1
-        colored.append("".join(parts))
-    return colored
-
-
 def supports_color() -> bool:
     if os.environ.get("NO_COLOR"):
         return False
@@ -142,103 +50,101 @@ def supports_color() -> bool:
     return True
 
 
+def colorize_text(text: str) -> str:
+    if not supports_color():
+        return text
+    colored = ""
+    for i, char in enumerate(text):
+        gi = min(i * len(GRADIENT) // len(text), len(GRADIENT) - 1)
+        r, g, b = GRADIENT[gi]
+        colored += f"{_ansi_fg(r, g, b)}{char}"
+    colored += RESET
+    return colored
+
+
 def _box_line(content: str, border_color: str, width: int) -> str:
     inner = width - 2
     padded = _pad(content, inner)
-    return f"{border_color}\u2502{RESET}{padded}{border_color}\u2502{RESET}"
+    return f"{border_color}│{RESET}{padded}{border_color}│{RESET}"
 
 
-def render_welcome_box() -> str:
-    width = 58
-    border_h = "\u2500" * (width - 2)
+def render_welcome_dashboard() -> str:
+    width = 60
+    border_h = "─" * (width - 2)
     lines: list[str] = []
-    lines.append(f"{CYAN}\u250c{border_h}\u2510{RESET}")
-    lines.append(_box_line("", CYAN, width))
-
-    title_rows = render_title("TG-MUSIC")
-    if supports_color():
-        colored = colorize_title(title_rows)
-    else:
-        colored = title_rows
-
-    for cr in colored:
-        lines.append(_box_line(f"  {cr}", CYAN, width))
-
-    lines.append(_box_line("", CYAN, width))
-    lines.append(_box_line(f"{BOLD}Terminal music player for Telegram channels{RESET}", CYAN, width))
-    lines.append(_box_line("", CYAN, width))
-    lines.append(f"{CYAN}\u2514{border_h}\u2518{RESET}")
-
-    return "\n".join(lines)
-
-
-def render_setup_instructions() -> str:
-    width = 58
-    inner = width - 2
-    border_h = "\u2500" * inner
-    lines: list[str] = []
-    lines.append("")
-    lines.append(f"{YELLOW}\u250c{border_h}\u2510{RESET}")
-    lines.append(_box_line(f"{BOLD}SETUP{RESET}", YELLOW, width))
-    lines.append(_box_line("", YELLOW, width))
-
+    
+    # Border color: CYAN
+    border_color = CYAN
+    
+    # Top border
+    lines.append(f"{border_color}┌{border_h}┐{RESET}")
+    
+    # Title section
+    lines.append(_box_line("", border_color, width))
+    title_text = "T G  -  M U S I C"
+    colored_title = f"{BOLD}{colorize_text(title_text)}{RESET}"
+    title_line = f"  {colored_title}"
+    
+    # Center title line
+    title_visible_len = len(title_text)
+    left_padding = (width - 2 - title_visible_len) // 2
+    centered_title_line = " " * left_padding + colored_title
+    lines.append(_box_line(centered_title_line, border_color, width))
+    
+    subtitle = "Terminal music player for Telegram channels"
+    left_padding_sub = (width - 2 - len(subtitle)) // 2
+    centered_sub_line = " " * left_padding_sub + f"{DIM}{subtitle}{RESET}"
+    lines.append(_box_line(centered_sub_line, border_color, width))
+    lines.append(_box_line("", border_color, width))
+    
+    # Divider
+    lines.append(f"{border_color}├{border_h}┤{RESET}")
+    
+    # SETUP section
+    lines.append(_box_line("", border_color, width))
+    lines.append(_box_line(f"  {BOLD}SETUP{RESET}", border_color, width))
+    lines.append(_box_line("", border_color, width))
+    
     steps = [
         f"{GREEN}1.{RESET} Go to {BOLD}https://my.telegram.org/apps{RESET}",
-        f"{GREEN}2.{RESET} Enter your phone number and log in",
-        f"{GREEN}3.{RESET} Enter the code sent to your Telegram",
-        f"{GREEN}4.{RESET} Fill the form (app title, short name, platform)",
-        f"{GREEN}5.{RESET} Click {BOLD}Create application{RESET}",
-        f"{GREEN}6.{RESET} Copy your {BOLD}api_id{RESET} and {BOLD}api_hash{RESET}",
+        f"{GREEN}2.{RESET} Log in and get your {BOLD}api_id{RESET} and {BOLD}api_hash{RESET}",
+        f"{GREEN}3.{RESET} Run configuration command:",
     ]
-
+    
     for step in steps:
-        wrapped = textwrap.wrap(step, width=inner - 4)
-        for wline in wrapped:
-            lines.append(_box_line(f"  {wline}", YELLOW, width))
-
-    lines.append(_box_line("", YELLOW, width))
-    lines.append(_box_line(f"{CYAN}{BOLD}Run this to configure:{RESET}", YELLOW, width))
-
-    cmd = "tg-music init"
-    lines.append(_box_line(f"  {GREEN}{BOLD}{cmd}{RESET}", YELLOW, width))
-
-    lines.append(_box_line("", YELLOW, width))
-    lines.append(f"{YELLOW}\u2514{border_h}\u2518{RESET}")
-
-    return "\n".join(lines)
-
-
-def render_quickstart() -> str:
-    width = 58
-    inner = width - 2
-    border_h = "\u2500" * inner
-    lines: list[str] = []
-    lines.append("")
-    lines.append(f"{MAGENTA}\u250c{border_h}\u2510{RESET}")
-    lines.append(_box_line(f"{BOLD}QUICKSTART{RESET}", MAGENTA, width))
-    lines.append(_box_line("", MAGENTA, width))
-
+        lines.append(_box_line(f"     {step}", border_color, width))
+        
+    lines.append(_box_line(f"     {GREEN}$ {BOLD}tg-music init{RESET}", border_color, width))
+    lines.append(_box_line("", border_color, width))
+    
+    # Divider
+    lines.append(f"{border_color}├{border_h}┤{RESET}")
+    
+    # QUICKSTART section
+    lines.append(_box_line("", border_color, width))
+    lines.append(_box_line(f"  {BOLD}QUICKSTART{RESET}", border_color, width))
+    lines.append(_box_line("", border_color, width))
+    
     cmds = [
-        ("Scan a channel:", "tg-music scan @channel --limit 300"),
-        ("Open the player:", "tg-music tui"),
-        ("Download tracks:", "tg-music cache @channel --limit 50"),
+        ("Scan a channel", "tg-music scan @channel --limit 300"),
+        ("Open the player", "tg-music tui"),
+        ("Cache tracks", "tg-music cache @channel --limit 50"),
     ]
-
+    
     for desc, cmd in cmds:
-        lines.append(_box_line(f"  {DIM}{desc}{RESET}", MAGENTA, width))
-        lines.append(_box_line(f"    {GREEN}{BOLD}{cmd}{RESET}", MAGENTA, width))
-        lines.append(_box_line("", MAGENTA, width))
-
-    lines.append(f"{MAGENTA}\u2514{border_h}\u2518{RESET}")
-
+        lines.append(_box_line(f"     {DIM}{desc:<18}{RESET} {GREEN}{BOLD}{cmd}{RESET}", border_color, width))
+        
+    lines.append(_box_line("", border_color, width))
+    
+    # Bottom border
+    lines.append(f"{border_color}└{border_h}┘{RESET}")
+    
     return "\n".join(lines)
 
 
 def show_welcome() -> None:
     print()
-    print(render_welcome_box())
-    print(render_setup_instructions())
-    print(render_quickstart())
+    print(render_welcome_dashboard())
     print()
 
 

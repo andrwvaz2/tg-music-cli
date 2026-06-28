@@ -83,7 +83,6 @@ def render_welcome_dashboard() -> str:
     lines.append(_box_line("", border_color, width))
     title_text = "T G  -  M U S I C"
     colored_title = f"{BOLD}{colorize_text(title_text)}{RESET}"
-    title_line = f"  {colored_title}"
     
     # Center title line
     title_visible_len = len(title_text)
@@ -102,7 +101,10 @@ def render_welcome_dashboard() -> str:
     
     # SETUP section
     lines.append(_box_line("", border_color, width))
-    lines.append(_box_line(f"  {BOLD}SETUP{RESET}", border_color, width))
+    setup_title = "SETUP"
+    left_padding_setup = (width - 2 - len(setup_title)) // 2
+    centered_setup_title = " " * left_padding_setup + f"{BOLD}{setup_title}{RESET}"
+    lines.append(_box_line(centered_setup_title, border_color, width))
     lines.append(_box_line("", border_color, width))
     
     steps = [
@@ -122,17 +124,33 @@ def render_welcome_dashboard() -> str:
     
     # QUICKSTART section
     lines.append(_box_line("", border_color, width))
-    lines.append(_box_line(f"  {BOLD}QUICKSTART{RESET}", border_color, width))
+    qs_title = "QUICKSTART"
+    left_padding_qs = (width - 2 - len(qs_title)) // 2
+    centered_qs_title = " " * left_padding_qs + f"{BOLD}{qs_title}{RESET}"
+    lines.append(_box_line(centered_qs_title, border_color, width))
     lines.append(_box_line("", border_color, width))
     
     cmds = [
-        ("Scan a channel", "tg-music scan @channel --limit 300"),
+        ("Add a channel", "tg-music add-channel @channel"),
+        ("Scan tracks", "tg-music scan @channel --limit 300"),
         ("Open the player", "tg-music tui"),
         ("Cache tracks", "tg-music cache @channel --limit 50"),
     ]
     
+    # Block centering: find the maximum visible length of the lines
+    max_len = 0
+    formatted_cmds = []
     for desc, cmd in cmds:
-        lines.append(_box_line(f"     {DIM}{desc:<18}{RESET} {GREEN}{BOLD}{cmd}{RESET}", border_color, width))
+        visible_text = f"{desc}:  {cmd}"
+        max_len = max(max_len, len(visible_text))
+        formatted_cmds.append((desc, cmd, visible_text))
+        
+    # Calculate the common left padding to center the block
+    left_padding_block = max(0, (width - 2 - max_len) // 2)
+    
+    for desc, cmd, visible_text in formatted_cmds:
+        colored_line = " " * left_padding_block + f"{DIM}{desc}:{RESET}  {GREEN}{BOLD}{cmd}{RESET}"
+        lines.append(_box_line(colored_line, border_color, width))
         
     lines.append(_box_line("", border_color, width))
     

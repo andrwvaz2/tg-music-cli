@@ -16,6 +16,9 @@ class RenderSplitMixin:
         clear_terminal_images()
         height, width = self.screen.getmaxyx()
 
+        if not self.help_visible and self.current_track is not None and self.cover_path is not None:
+            self.refresh_cover_art(height, width)
+
         hdr_bg = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
         hdr_dim = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_DIM
         sep_attr = self.color_attr(self.color_primary, -1) | curses.A_DIM

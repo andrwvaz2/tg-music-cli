@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import curses
 
+from .db import connect
 from .models import format_duration
 from .render_base import clear_terminal_images, wrap
 
@@ -157,9 +158,9 @@ class RenderPanelsMixin:
             self.add(row, 0, line[: max(left_width - 1, 0)], attr)
 
     def draw_playlists(self, body_top: int, visible_height: int, left_width: int) -> None:
-        from .db import connect, get_playlists, get_playlist_tracks
+        from .db import list_playlists
         with connect() as conn:
-            playlists = get_playlists(conn)
+            playlists = list_playlists(conn)
         for row_idx, pl in enumerate(playlists[self.offset : self.offset + visible_height], start=body_top):
             is_sel = (self.offset + (row_idx - body_top)) == self.selected
             if is_sel:
@@ -169,9 +170,8 @@ class RenderPanelsMixin:
                     attr = self.color_attr(curses.COLOR_BLACK, curses.COLOR_CYAN) | curses.A_BOLD
             else:
                 attr = curses.A_NORMAL
-            with connect() as conn:
-                count = len(get_playlist_tracks(conn, pl["name"]))
-            line = f"  {pl['name']} ({count})"
+            count = pl.get("count", 0)
+            line = f"  \U0001f3b5 {pl['name']} ({count})"
             self.add(row_idx, 0, line[: max(left_width - 1, 0)], attr)
 
     def draw_tracks(self, body_top: int, visible_height: int, left_width: int) -> None:

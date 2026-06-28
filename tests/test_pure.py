@@ -5,7 +5,7 @@ from tg_music.models import Track, format_duration
 from tg_music.telegram_client import normalize_channel, safe_name, clean_message_text
 from tg_music.shared import fuzzy_match, format_bytes
 from tg_music.lyrics import fetch_lyrics
-from tg_music.tui_render import CSI_RE, parse_ansi_sgr
+from tg_music.render_base import CSI_RE, parse_ansi_sgr
 
 
 class TestFormatDuration:
@@ -184,3 +184,45 @@ class TestLyrics:
         if result is not None:
             assert result.artist == "Queen"
             assert result.title == "Bohemian Rhapsody"
+
+
+class TestRenderBase:
+    def test_wrap_short_text(self) -> None:
+        from tg_music.render_base import wrap
+        result = wrap("hello", 80)
+        assert result == ["hello"]
+
+    def test_wrap_long_text(self) -> None:
+        from tg_music.render_base import wrap
+        result = wrap("hello world this is a long line", 10)
+        assert len(result) >= 2
+        assert all(len(line) <= 10 for line in result)
+
+    def test_parse_ansi_sgr_plain(self) -> None:
+        from tg_music.render_base import parse_ansi_sgr
+        parts = parse_ansi_sgr("hello")
+        assert len(parts) == 1
+        assert parts[0] == ("hello", -1, -1)
+
+    def test_parse_ansi_sgr_with_color(self) -> None:
+        from tg_music.render_base import parse_ansi_sgr
+        parts = parse_ansi_sgr("\x1b[38;5;1mred\x1b[0m normal")
+        assert len(parts) == 2
+        assert parts[0] == ("red", 1, -1)
+        assert parts[1] == (" normal", -1, -1)
+
+
+class TestDBPlaylists:
+    def test_list_playlists_empty(self) -> None:
+        from tg_music.db import connect, list_playlists
+        with connect() as conn:
+            result = list_playlists(conn)
+        assert isinstance(result, list)
+
+    def test_list_playlists_has_count(self) -> None:
+        from tg_music.db import connect, list_playlists
+        with connect() as conn:
+            result = list_playlists(conn)
+        for pl in result:
+            assert "count" in pl
+            assert isinstance(pl["count"], int)

@@ -278,6 +278,40 @@ Contributions, bug reports, and feature requests are welcome! Feel free to open 
 
 ---
 
+## Troubleshooting
+
+### Channel is private or inaccessible
+
+If a channel returns no tracks or shows "channel not found", make sure:
+- The channel is public (or you are a member of the private channel)
+- The channel URL is correct (e.g., `https://t.me/channel_name`)
+- You have authenticated with `tg-music init` and your session is valid
+
+### Invalid API credentials
+
+If you see "api_id/api_hash invalid" errors:
+1. Go to [my.telegram.org/apps](https://my.telegram.org/apps)
+2. Verify your credentials are correct
+3. Run `tg-music init` again to update them
+4. Delete the old session: `rm ~/.local/share/tg-music/session.session`
+
+### mpv not found
+
+If playback fails with "mpv not found":
+- **Linux:** `sudo apt install mpv` (or `pacman -S mpv`, `dnf install mpv`)
+- **macOS:** `brew install mpv`
+- Verify: `mpv --version`
+
+### Cover art not showing (chafa)
+
+If cover art doesn't render in the terminal:
+- Install chafa: `sudo apt install chafa` (or `brew install chafa`)
+- Use a terminal with image support: **Kitty**, **Ghostty**, or **WezTerm** for best results
+- Other terminals will fall back to ASCII art automatically
+- Verify: `chafa --version`
+
+---
+
 ## Disclaimer
 
 tg-music-cli is a personal music organization tool. It plays audio from public Telegram channels that you have access to through your own Telegram account. The developer does not provide, host, or distribute any media content.

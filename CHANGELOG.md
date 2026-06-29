@@ -23,4 +23,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Welcome screen with setup instructions
 - CLI commands: scan, cache, play, tag, favorite, ignore, export, import
 - GitHub Actions CI (pytest on Python 3.11/3.12/3.13)
-- 42 unit tests
+- Ruff linter integration
+- CONTRIBUTING.md with development workflow
+- 53 unit tests

@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y mpv chafa
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
 
@@ -26,6 +29,9 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --all-extras
+
+      - name: Smoke test (imports)
+        run: uv run python -c "from tg_music.cli import main; from tg_music.tui import Tui; from tg_music.player import BackgroundPlayer; print('All imports OK')"
 
       - name: Run tests
         run: uv run pytest tests/ -v

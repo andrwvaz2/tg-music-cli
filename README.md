@@ -98,7 +98,7 @@ brew install mpv chafa
 
 Clone this repository:
 ```bash
-git clone https://github.com/yourusername/tg-music-cli.git
+git clone https://github.com/andrwvaz2/tg-music-cli.git
 cd tg-music-cli
 ```
 

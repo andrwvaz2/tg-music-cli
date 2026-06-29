@@ -44,13 +44,7 @@ https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 * **Multiple Layouts:** Classic view, 3-panel Split View (`P`), and a compact single-line Mini View (`M`).
 * **Blocklist:** Ignore tracks to automatically prevent them from showing up or being bulk-downloaded.
 
-### Screenshots
 
-> **To capture:** Open `tg-music tui`, press `P` for Split View, play a track, then screenshot the terminal (1920×1080 recommended).
-
-<!-- Replace these placeholders with real screenshots -->
-<!-- ![Split View](assets/split-view.png) -->
-<!-- ![Mini View](assets/mini-view.png) -->
 
 ---
 

@@ -33,7 +33,7 @@ def _get_cache_dir() -> Path:
                 if val:
                     return Path(val).expanduser()
         except Exception:
-            pass
+            pass  # Config unreadable; fall back to default cache path
     return default_cache
 
 

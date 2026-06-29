@@ -31,7 +31,7 @@ def fetch_lyrics(artist: str, title: str, duration: int | None = None) -> LyricR
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode())
     except Exception:
-        return None
+        return None  # Network/parse error; lyrics unavailable
 
     if not data:
         return None

@@ -129,7 +129,7 @@ class Tui(RenderMixin, PlayerMixin):
             if "prefer-light" in res.lower():
                 return True
         except Exception:
-            pass
+            pass  # Terminal query failed; default to dark theme
         return False
 
     def current_color_theme(self) -> ColorTheme:
@@ -141,7 +141,7 @@ class Tui(RenderMixin, PlayerMixin):
         try:
             curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
         except Exception:
-            pass
+            pass  # Mouse not supported; continue without it
         self.init_colors()
         self.screen.timeout(self.input_timeout_ms)
         self.reload()
@@ -329,7 +329,7 @@ class Tui(RenderMixin, PlayerMixin):
         try:
             _, mx, my, _, bstate = curses.getmouse()
         except Exception:
-            return
+            return  # No mouse event available
         if bstate & curses.BUTTON1_CLICKED:
             height, width = self.screen.getmaxyx()
             left_width = max(42, int(width * 0.58))
@@ -484,7 +484,7 @@ class Tui(RenderMixin, PlayerMixin):
             else:
                 self.lyrics_text = "(No lyrics found)"
         except Exception:
-            self.lyrics_text = "(Lyrics lookup error)"
+            self.lyrics_text = "(Lyrics lookup error)"  # Network/parse failure
         finally:
             self.dirty = True
 

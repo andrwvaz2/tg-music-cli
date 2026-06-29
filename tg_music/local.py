@@ -73,7 +73,7 @@ def _read_metadata(fp: Path) -> tuple[str, str, int | None]:
                 elif "albumartist" in audio.tags and audio.tags["albumartist"]:
                     performer = audio.tags["albumartist"][0]
     except Exception:
-        pass
+        pass  # Bad metadata; skip this file
     return title, performer, duration
 
 

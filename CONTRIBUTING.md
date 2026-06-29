@@ -18,12 +18,12 @@ This installs the project and all dev dependencies (pytest).
 uv run pytest tests/ -v
 ```
 
-All 42 tests should pass before submitting a PR.
+All tests should pass before submitting a PR.
 
 ## Code style
 
 - Python 3.11+ (uses `from __future__ import annotations`)
-- No linter configured yet — follow PEP 8 conventions
+- Linter: `uv run ruff check tg_music/` (must pass before PR)
 - Use type hints on function signatures
 - Keep functions focused and testable (pure logic in `tests/test_pure.py`)
 

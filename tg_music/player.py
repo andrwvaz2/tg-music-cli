@@ -35,7 +35,7 @@ def _send_ipc_command(command: list) -> None:
         s.sendall(payload.encode())
         s.close()
     except Exception:
-        pass
+        pass  # IPC socket error; player continues running
 
 
 class BackgroundPlayer:

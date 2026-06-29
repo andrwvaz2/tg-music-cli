@@ -81,7 +81,9 @@ CREATE TABLE IF NOT EXISTS playlist_tracks (
 DB_WRITE_LOCK = threading.Lock()
 
 
-def connect(db_file: Path = DB_FILE) -> sqlite3.Connection:
+def connect(db_file: Path | None = None) -> sqlite3.Connection:
+    if db_file is None:
+        db_file = DB_FILE
     ensure_dirs()
     conn = sqlite3.connect(
         db_file,

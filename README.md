@@ -8,6 +8,7 @@ Terminal music player for Telegram channels.
 
 https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 
+![tg-music TUI split view](assets/screenshot.png)
 
 
 

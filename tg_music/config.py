@@ -93,6 +93,8 @@ DEFAULT_KEYBINDS = {
 
 def ensure_dirs() -> None:
     for path in (DATA_DIR, CACHE_DIR, CONFIG_DIR, AUDIO_CACHE_DIR, COVER_CACHE_DIR):
+        if path.is_symlink() and not path.exists():
+            path.unlink()  # Remove broken symlink
         path.mkdir(parents=True, exist_ok=True)
 
 

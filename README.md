@@ -127,8 +127,12 @@ pip install .
 
 ## Quickstart
 
+### Why do I need Telegram API credentials?
+
+This app uses [Telethon](https://docs.telethon.dev/) (an open-source Telegram client library) to connect directly to Telegram's API. Telegram requires any unofficial client to authenticate with its own `api_id` and `api_hash` — this is how Telegram distinguishes official apps from third-party ones. You can get yours free at [my.telegram.org/apps](https://my.telegram.org/apps) in under 2 minutes. **Your credentials never leave your machine** — they are stored locally in `~/.local/share/tg-music/session.session` and are only used to authenticate your personal Telegram account.
+
 1. **Configure Telegram Credentials:**
-   Before running the app, you need an API ID and Hash. Go to [my.telegram.org](https://my.telegram.org), log in, create an application, and retrieve your credentials.
+   Go to [my.telegram.org](https://my.telegram.org), log in, create an application, and retrieve your credentials.
    
    Run the initialization wizard:
    ```bash
@@ -264,6 +268,6 @@ Contributions, bug reports, and feature requests are welcome! Feel free to open 
 
 ## Disclaimer
 
-This software is provided for educational and personal use only. The developer does not host, distribute, or promote the download of copyrighted material. 
+tg-music-cli is a personal music organization tool. It plays audio from public Telegram channels that you have access to through your own Telegram account. The developer does not provide, host, or distribute any media content.
 
-The user is solely responsible for ensuring that accessing and playing content from Telegram channels through this tool complies with local laws and the platform's Terms of Service.
+You are responsible for how you use this tool. Make sure you have the right to access and play the content you listen to through Telegram.

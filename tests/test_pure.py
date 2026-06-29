@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 from tg_music.models import Track, format_duration
 from tg_music.telegram_client import normalize_channel, safe_name, clean_message_text
 from tg_music.shared import fuzzy_match, format_bytes
@@ -226,3 +225,85 @@ class TestDBPlaylists:
         for pl in result:
             assert "count" in pl
             assert isinstance(pl["count"], int)
+
+
+class TestDBFavorites:
+    def test_is_favorite_returns_bool(self) -> None:
+        from tg_music.db import connect, is_favorite
+        with connect() as conn:
+            result = is_favorite(conn, 999999)
+        assert isinstance(result, bool)
+
+    def test_get_all_favorite_ids_returns_set(self) -> None:
+        from tg_music.db import connect, get_all_favorite_ids
+        with connect() as conn:
+            result = get_all_favorite_ids(conn)
+        assert isinstance(result, set)
+
+
+class TestDBTags:
+    def test_add_and_remove_tag(self) -> None:
+        from tg_music.db import connect, add_tag, remove_tag
+        with connect() as conn:
+            tag_id = add_tag(conn, "test_tag_xyz")
+            assert isinstance(tag_id, int)
+            remove_tag(conn, "test_tag_xyz")
+
+    def test_get_track_tags_returns_list(self) -> None:
+        from tg_music.db import connect, get_track_tags
+        with connect() as conn:
+            result = get_track_tags(conn, 999999)
+        assert isinstance(result, list)
+
+
+class TestDBTracks:
+    def test_get_track_nonexistent(self) -> None:
+        from tg_music.db import connect, get_track
+        with connect() as conn:
+            result = get_track(conn, 999999999)
+        assert result is None
+
+    def test_list_tracks_returns_list(self) -> None:
+        from tg_music.db import connect, list_tracks
+        with connect() as conn:
+            result = list_tracks(conn)
+        assert isinstance(result, list)
+
+
+class TestThemes:
+    def test_list_themes(self) -> None:
+        from tg_music.themes import list_themes
+        themes = list_themes()
+        assert isinstance(themes, list)
+        assert len(themes) > 0
+        assert "dark" in themes
+
+    def test_get_theme_valid(self) -> None:
+        from tg_music.themes import get_theme
+        theme = get_theme("dark")
+        assert theme is not None
+
+    def test_get_theme_invalid(self) -> None:
+        from tg_music.themes import get_theme
+        theme = get_theme("nonexistent_theme_xyz")
+        assert theme is not None  # returns default
+
+
+class TestConfig:
+    def test_load_settings(self) -> None:
+        from tg_music.config import load_settings
+        settings = load_settings()
+        assert hasattr(settings, "volume")
+        assert hasattr(settings, "theme")
+
+    def test_save_and_load_settings(self) -> None:
+        from tg_music.config import load_settings, save_settings
+        settings = load_settings()
+        original_volume = settings.volume
+        settings.volume = 42
+        save_settings(settings)
+        reloaded = load_settings()
+        assert reloaded.volume == 42
+        # Restore
+        settings.volume = original_volume
+        save_settings(settings)

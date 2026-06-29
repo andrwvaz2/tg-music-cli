@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 from .config import AUDIO_CACHE_DIR, COVER_CACHE_DIR

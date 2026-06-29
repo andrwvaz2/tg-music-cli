@@ -6,6 +6,7 @@ import getpass
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 from .config import CONFIG_FILE, ensure_dirs, load_settings, save_config, save_settings
@@ -21,7 +22,6 @@ from .db import (
     get_playlist_tracks,
     get_track,
     get_track_tags,
-    is_favorite,
     latest_for_channel,
     latest_message_id_for_channel,
     list_all_tags,
@@ -277,8 +277,7 @@ def cmd_init(_args: argparse.Namespace) -> int:
         raise RuntimeError("api_id debe ser numerico.")
     if not re.fullmatch(r"[0-9a-fA-F]{32}", api_hash):
         raise RuntimeError(
-            "Invalid api_hash. It must be a 32-character hexadecimal string, "
-            "no el token del bot ni el app short name."
+            "Invalid api_hash. It must be a 32-character hexadecimal string, no el token del bot ni el app short name."
         )
     save_config(api_id, api_hash)
     print(f"\nConfig saved to {CONFIG_FILE}")
@@ -450,9 +449,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 if latest_known is None:
                     continue
 
-                new_count, newest_title = asyncio.run(
-                    scan_new_uploads(channel, latest_known)
-                )
+                new_count, newest_title = asyncio.run(scan_new_uploads(channel, latest_known))
                 if new_count:
                     seen[channel] = latest_message_id_for_channel(conn, channel)
                     message = f"{channel}: {new_count} new track(s)"
@@ -579,8 +576,7 @@ def cmd_recent(args: argparse.Namespace) -> int:
             return 0
         for track in tracks:
             print(
-                f"{track.id:4d} {format_duration(track.duration):>6} "
-                f"plays:{track.play_count:3d} {track.display_title}"
+                f"{track.id:4d} {format_duration(track.duration):>6} plays:{track.play_count:3d} {track.display_title}"
             )
     return 0
 
@@ -803,6 +799,7 @@ def cmd_import(args: argparse.Namespace) -> int:
                     "local_path": str(path),
                 }
                 from .db import upsert_tracks_batch
+
                 upsert_tracks_batch(conn, [item])
                 imported += 1
     print(f"Imported {imported} tracks from {input_file}")
@@ -975,7 +972,7 @@ def print_tracks(
         ignored = "x" if show_ignored and track.ignored else " "
         fav = "♥" if track.id in fav_ids else " "
         print(
-            f"{track.id:4d}{cached}{ignored} {format_duration(track.duration):>6} "
+            f"{track.id:4d}{cached}{ignored}{fav} {format_duration(track.duration):>6} "
             f"{track.channel_title} | {track.display_title}"
         )
 

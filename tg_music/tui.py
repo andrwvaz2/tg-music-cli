@@ -3,9 +3,7 @@ from __future__ import annotations
 import asyncio
 import curses
 import os
-import re
 import subprocess
-import sys
 import threading
 import time
 import traceback
@@ -14,7 +12,6 @@ from pathlib import Path
 
 from .cache import cache_tracks_async
 from .config import DATA_DIR, load_settings, save_settings
-from .cover import extract_embedded_cover, supports_graphics_cover
 from .themes import THEMES, ColorTheme, get_theme, list_themes
 from .db import (
     add_to_playlist,
@@ -23,30 +20,22 @@ from .db import (
     get_all_favorite_ids,
     get_playlist_by_name,
     get_playlist_tracks,
-    get_track,
-    get_track_tags,
-    is_favorite,
     latest_for_channel,
     latest_message_id_for_channel,
-    list_all_tags,
     list_channels,
     list_playlists,
     list_tracks,
     list_uncached_tracks,
-    record_play,
-    remove_from_playlist,
-    set_ignored,
     tag_track,
     toggle_favorite,
-    untag_track,
 )
 from .lyrics import fetch_lyrics
-from .models import Channel, Track, format_duration
+from .models import Channel, Track
 from .player import BackgroundPlayer
-from .shared import delete_cached_files, format_bytes, fuzzy_match, notify_user
-from .telegram_client import download_cover, download_track, normalize_channel, scan_channel, scan_channel_since
+from .shared import fuzzy_match, notify_user
+from .telegram_client import normalize_channel, scan_channel, scan_channel_since
 from .tui_render import RenderMixin
-from .render_base import clear_terminal_images, wrap
+from .render_base import clear_terminal_images
 from .tui_player import PlayerMixin
 
 
@@ -135,7 +124,7 @@ class Tui(RenderMixin, PlayerMixin):
                 ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
                 stderr=subprocess.DEVNULL,
                 text=True,
-                timeout=1
+                timeout=1,
             )
             if "prefer-light" in res.lower():
                 return True
@@ -414,7 +403,9 @@ class Tui(RenderMixin, PlayerMixin):
                 self.add(y, start_x + 1, line[: overlay_w - 2], attr)
 
             close_text = "Enter: apply | q/Esc: cancel"
-            self.add(start_y + overlay_h - 1, start_x + max(2, (overlay_w - len(close_text)) // 2), close_text, frame_attr)
+            self.add(
+                start_y + overlay_h - 1, start_x + max(2, (overlay_w - len(close_text)) // 2), close_text, frame_attr
+            )
             self.screen.refresh()
 
             key = self.screen.getch()
@@ -450,7 +441,9 @@ class Tui(RenderMixin, PlayerMixin):
         elif leaving_split and (previous_panel > 0 or self.channel_filter or self.current_track is not None):
             self.view = "tracks"
             if self.current_track is not None:
-                track_index = next((index for index, track in enumerate(self.tracks) if track.id == self.current_track.id), None)
+                track_index = next(
+                    (index for index, track in enumerate(self.tracks) if track.id == self.current_track.id), None
+                )
                 if track_index is not None:
                     self.selected = track_index
             self.selected = min(self.selected, max(len(self.tracks) - 1, 0))
@@ -580,7 +573,7 @@ class Tui(RenderMixin, PlayerMixin):
             self.status = "No playlists. Press 'a' in playlists view to create one"
             self.dirty = True
             return
-        names = ", ".join(f"{i+1}:{p['name']}" for i, p in enumerate(playlists))
+        names = ", ".join(f"{i + 1}:{p['name']}" for i, p in enumerate(playlists))
         choice = self.input_prompt(f"Track: {track.display_title[:25]}. Playlist ({names}): ")
         if not choice:
             self.status = "Cancelled"
@@ -676,7 +669,7 @@ class Tui(RenderMixin, PlayerMixin):
             body_top = 3
             body_h = max(height - body_top - 1, 1)
 
-            for i, entry in enumerate(entries[offset:offset + body_h]):
+            for i, entry in enumerate(entries[offset : offset + body_h]):
                 y = body_top + i
                 is_sel = (offset + i) == selected
                 name = entry.name
@@ -760,7 +753,6 @@ class Tui(RenderMixin, PlayerMixin):
                 offset = 0
 
     def focus_local_entry(self) -> None:
-        from .local import LOCAL_CHANNEL
 
         if self.view != "channels":
             self.show_channels()
@@ -804,6 +796,7 @@ class Tui(RenderMixin, PlayerMixin):
             self.dirty = True
             return
         from .local import LOCAL_CHANNEL
+
         track_channel = None if self.view == "channels" else self.channel_filter
         if self.local_folder and self.view == "tracks":
             local_tracks = [t for t in self.tracks if t.channel == LOCAL_CHANNEL]
@@ -833,9 +826,9 @@ class Tui(RenderMixin, PlayerMixin):
                 self.favorite_ids = get_all_favorite_ids(conn)
         if self.query:
             self.tracks = [
-                t for t in self.tracks
-                if fuzzy_match(self.query, t.display_title)
-                or fuzzy_match(self.query, t.channel_title)
+                t
+                for t in self.tracks
+                if fuzzy_match(self.query, t.display_title) or fuzzy_match(self.query, t.channel_title)
             ]
         self.browser_rows = self.build_browser_rows()
         items_len = len(self.browser_rows) if self.view == "channels" else len(self.tracks)
@@ -950,11 +943,13 @@ class Tui(RenderMixin, PlayerMixin):
             tracks_by_channel.setdefault(track.channel, []).append(track)
 
         from .local import LOCAL_CHANNEL
+
         local_tracks = tracks_by_channel.get(LOCAL_CHANNEL, [])
         local_count = len(local_tracks)
-        local_title = f"Local"
+        local_title = "Local"
         if self.local_folder:
             from pathlib import Path
+
             local_title = f"Local ({Path(self.local_folder).name})"
         rows.append({"kind": "local", "channel": LOCAL_CHANNEL, "title": local_title, "count": local_count})
         if LOCAL_CHANNEL in self.expanded_channels:
@@ -1144,6 +1139,7 @@ class Tui(RenderMixin, PlayerMixin):
             raise SystemExit(0)
         elif cmd == "theme" and args:
             from .themes import get_theme, list_themes
+
             theme_name = args[0]
             if theme_name in list_themes():
                 settings = load_settings()
@@ -1186,9 +1182,9 @@ class Tui(RenderMixin, PlayerMixin):
             self.toggle_favorite_selected()
         elif cmd in ("rm", "remove") and args:
             try:
-                track_id = int(args[0])
                 with connect() as conn:
                     from .db import remove_tag
+
                     tag_name = args[1] if len(args) > 1 else ""
                     if tag_name:
                         remove_tag(conn, tag_name)
@@ -1212,7 +1208,6 @@ class Tui(RenderMixin, PlayerMixin):
             self.add(height - 1, 0, " " * max(width - 1, 0))
             self.add(height - 1, 0, prompt[: max(width - 1, 0)])
             self.screen.refresh()
-            input_x = min(len(prompt), width - 2)
             buf: list[int] = []
             while True:
                 key = self.screen.getch()
@@ -1525,6 +1520,7 @@ class Tui(RenderMixin, PlayerMixin):
 
 def run_tui() -> None:
     from .welcome import is_configured, show_welcome
+
     if not is_configured():
         show_welcome()
         print("Run 'tg-music init' to configure, then 'tg-music tui' to start.")

@@ -72,33 +72,33 @@ def render_welcome_dashboard() -> str:
     width = 60
     border_h = "─" * (width - 2)
     lines: list[str] = []
-    
+
     # Border color: CYAN
     border_color = CYAN
-    
+
     # Top border
     lines.append(f"{border_color}┌{border_h}┐{RESET}")
-    
+
     # Title section
     lines.append(_box_line("", border_color, width))
     title_text = "T G  -  M U S I C"
     colored_title = f"{BOLD}{colorize_text(title_text)}{RESET}"
-    
+
     # Center title line
     title_visible_len = len(title_text)
     left_padding = (width - 2 - title_visible_len) // 2
     centered_title_line = " " * left_padding + colored_title
     lines.append(_box_line(centered_title_line, border_color, width))
-    
+
     subtitle = "Terminal music player for Telegram channels"
     left_padding_sub = (width - 2 - len(subtitle)) // 2
     centered_sub_line = " " * left_padding_sub + f"{DIM}{subtitle}{RESET}"
     lines.append(_box_line(centered_sub_line, border_color, width))
     lines.append(_box_line("", border_color, width))
-    
+
     # Divider
     lines.append(f"{border_color}├{border_h}┤{RESET}")
-    
+
     # SETUP section
     lines.append(_box_line("", border_color, width))
     setup_title = "SETUP"
@@ -106,22 +106,22 @@ def render_welcome_dashboard() -> str:
     centered_setup_title = " " * left_padding_setup + f"{BOLD}{setup_title}{RESET}"
     lines.append(_box_line(centered_setup_title, border_color, width))
     lines.append(_box_line("", border_color, width))
-    
+
     steps = [
         f"{GREEN}1.{RESET} Go to {BOLD}https://my.telegram.org/apps{RESET}",
         f"{GREEN}2.{RESET} Log in and get your {BOLD}api_id{RESET} and {BOLD}api_hash{RESET}",
         f"{GREEN}3.{RESET} Run configuration command:",
     ]
-    
+
     for step in steps:
         lines.append(_box_line(f"     {step}", border_color, width))
-        
+
     lines.append(_box_line(f"     {GREEN}$ {BOLD}tg-music init{RESET}", border_color, width))
     lines.append(_box_line("", border_color, width))
-    
+
     # Divider
     lines.append(f"{border_color}├{border_h}┤{RESET}")
-    
+
     # QUICKSTART section
     lines.append(_box_line("", border_color, width))
     qs_title = "QUICKSTART"
@@ -129,14 +129,14 @@ def render_welcome_dashboard() -> str:
     centered_qs_title = " " * left_padding_qs + f"{BOLD}{qs_title}{RESET}"
     lines.append(_box_line(centered_qs_title, border_color, width))
     lines.append(_box_line("", border_color, width))
-    
+
     cmds = [
         ("Add a channel", "tg-music add-channel @channel"),
         ("Scan tracks", "tg-music scan @channel --limit 300"),
         ("Open the player", "tg-music tui"),
         ("Cache tracks", "tg-music cache @channel --limit 50"),
     ]
-    
+
     # Block centering: find the maximum visible length of the lines
     max_len = 0
     formatted_cmds = []
@@ -144,19 +144,19 @@ def render_welcome_dashboard() -> str:
         visible_text = f"{desc}:  {cmd}"
         max_len = max(max_len, len(visible_text))
         formatted_cmds.append((desc, cmd, visible_text))
-        
+
     # Calculate the common left padding to center the block
     left_padding_block = max(0, (width - 2 - max_len) // 2)
-    
+
     for desc, cmd, visible_text in formatted_cmds:
         colored_line = " " * left_padding_block + f"{DIM}{desc}:{RESET}  {GREEN}{BOLD}{cmd}{RESET}"
         lines.append(_box_line(colored_line, border_color, width))
-        
+
     lines.append(_box_line("", border_color, width))
-    
+
     # Bottom border
     lines.append(f"{border_color}└{border_h}┘{RESET}")
-    
+
     return "\n".join(lines)
 
 

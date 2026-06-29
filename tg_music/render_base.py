@@ -9,6 +9,7 @@ CSI_RE = re.compile(r"\x1b\[([0-?]*)([ -/]*)([@-~])")
 
 def clear_terminal_images() -> None:
     import sys
+
     try:
         sys.stdout.write("\x1b_Ga=d,d=A\x1b\\")
         sys.stdout.flush()

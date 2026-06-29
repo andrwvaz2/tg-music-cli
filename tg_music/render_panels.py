@@ -5,7 +5,7 @@ import time
 
 from .db import connect, get_track_tags, is_favorite
 from .models import format_duration
-from .render_base import clear_terminal_images, wrap
+from .render_base import wrap
 
 
 class RenderPanelsMixin:
@@ -87,7 +87,6 @@ class RenderPanelsMixin:
         return True
 
     def draw(self) -> None:
-        from .local import LOCAL_CHANNEL
         if self.mini_mode:
             self.draw_mini()
             return
@@ -158,9 +157,16 @@ class RenderPanelsMixin:
                 left_title = f"TRACKS: {channel_title}"
             if self.playlist_filter:
                 left_title = f"PLAYLIST: {self.playlist_filter}"
-        self.add(5, 0, f" {left_title} "[: max(left_width - 1, 0)], self.color_attr(self.color_primary, -1) | curses.A_BOLD)
+        self.add(
+            5, 0, f" {left_title} "[: max(left_width - 1, 0)], self.color_attr(self.color_primary, -1) | curses.A_BOLD
+        )
         if right_width > 12:
-            self.add(5, right_x, " DETAILS "[: max(right_width - 1, 0)], self.color_attr(self.color_primary, -1) | curses.A_BOLD)
+            self.add(
+                5,
+                right_x,
+                " DETAILS "[: max(right_width - 1, 0)],
+                self.color_attr(self.color_primary, -1) | curses.A_BOLD,
+            )
         visible_height = max(height - body_top - 1, 1)
         if self.selected < self.offset:
             self.offset = self.selected
@@ -187,9 +193,8 @@ class RenderPanelsMixin:
 
     def _draw_channel_rows(self, body_top: int, visible_height: int, left_width: int) -> None:
         from .local import LOCAL_CHANNEL
-        for row, item in enumerate(
-            self.browser_rows[self.offset : self.offset + visible_height], start=body_top
-        ):
+
+        for row, item in enumerate(self.browser_rows[self.offset : self.offset + visible_height], start=body_top):
             is_sel = (self.offset + row - body_top) == self.selected
             if is_sel:
                 if self.is_light:
@@ -237,6 +242,7 @@ class RenderPanelsMixin:
 
     def draw_playlists(self, body_top: int, visible_height: int, left_width: int) -> None:
         from .db import list_playlists
+
         with connect() as conn:
             playlists = list_playlists(conn)
         for row_idx, pl in enumerate(playlists[self.offset : self.offset + visible_height], start=body_top):
@@ -305,7 +311,7 @@ class RenderPanelsMixin:
                 f"{dur:>5}  {track.display_title} {status_label}"
             )
             if is_selected:
-                line_padded = f"{line:<{left_width-1}}"
+                line_padded = f"{line:<{left_width - 1}}"
             else:
                 line_padded = line
             self.add(row, 0, line_padded[: max(left_width - 1, 0)], attr)
@@ -366,7 +372,11 @@ class RenderPanelsMixin:
                 "/: search current view",
             ]
             for text in lines:
-                attr = self.color_attr(self.color_success, -1) | curses.A_BOLD if text == "Library browser" else curses.A_NORMAL
+                attr = (
+                    self.color_attr(self.color_success, -1) | curses.A_BOLD
+                    if text == "Library browser"
+                    else curses.A_NORMAL
+                )
                 for line in wrap(text, width - 2):
                     if cover_top is not None and row >= cover_top:
                         return

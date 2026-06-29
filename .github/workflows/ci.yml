@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
+      - name: Lint
+        run: uv run ruff check tg_music/
+
       - name: Smoke test (imports)
         run: uv run python -c "from tg_music.cli import main; from tg_music.tui import Tui; from tg_music.player import BackgroundPlayer; print('All imports OK')"
 

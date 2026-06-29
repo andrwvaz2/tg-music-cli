@@ -100,16 +100,12 @@ def load_config() -> TelegramConfig:
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILE)
     if not parser.has_section("telegram"):
-        raise RuntimeError(
-            f"Telegram is not configured. Run: tg-music init\nFile: {CONFIG_FILE}"
-        )
+        raise RuntimeError(f"Telegram is not configured. Run: tg-music init\nFile: {CONFIG_FILE}")
 
     api_id = parser.get("telegram", "api_id", fallback="").strip()
     api_hash = parser.get("telegram", "api_hash", fallback="").strip()
     if not api_id or not api_hash:
-        raise RuntimeError(
-            f"Incomplete config. Run: tg-music init\nFile: {CONFIG_FILE}"
-        )
+        raise RuntimeError(f"Incomplete config. Run: tg-music init\nFile: {CONFIG_FILE}")
 
     return TelegramConfig(api_id=int(api_id), api_hash=api_hash)
 

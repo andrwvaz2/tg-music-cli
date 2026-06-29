@@ -139,7 +139,7 @@ async def download_track_with_client(
         except Exception as exc:
             last_error = exc
             if attempt < max_retries - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
     raise last_error or RuntimeError("Descarga fallo despues de reintentos.")
 
 
@@ -160,9 +160,7 @@ async def download_cover(track: Track) -> Path | None:
         return Path(downloaded) if downloaded else None
 
 
-def message_to_track_dict(
-    message: Message, channel: str, channel_title: str
-) -> dict[str, object] | None:
+def message_to_track_dict(message: Message, channel: str, channel_title: str) -> dict[str, object] | None:
     document = message.document
     if document is None:
         return None

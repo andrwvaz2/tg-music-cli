@@ -303,7 +303,9 @@ def list_tracks(
     if favorites_only:
         clauses.append("t.id IN (SELECT track_id FROM favorites)")
     if tag:
-        clauses.append("t.id IN (SELECT tt.track_id FROM track_tags tt JOIN tags tg ON tt.tag_id = tg.id WHERE tg.name = ?)")
+        clauses.append(
+            "t.id IN (SELECT tt.track_id FROM track_tags tt JOIN tags tg ON tt.tag_id = tg.id WHERE tg.name = ?)"
+        )
         params.append(tag)
     if query:
         query_clauses = []
@@ -319,7 +321,9 @@ def list_tracks(
     rows = conn.execute(
         """
             SELECT t.* FROM tracks t
-            WHERE """ + where + """
+            WHERE """
+        + where
+        + """
             ORDER BY t.date DESC, t.message_id DESC
             LIMIT ?
         """,
@@ -404,9 +408,7 @@ def list_random_tracks(conn: sqlite3.Connection, limit: int = 1) -> list[Track]:
 
 
 def toggle_favorite(conn: sqlite3.Connection, track_id: int) -> bool:
-    existing = conn.execute(
-        "SELECT 1 FROM favorites WHERE track_id = ?", (track_id,)
-    ).fetchone()
+    existing = conn.execute("SELECT 1 FROM favorites WHERE track_id = ?", (track_id,)).fetchone()
     with DB_WRITE_LOCK:
         if existing:
             conn.execute("DELETE FROM favorites WHERE track_id = ?", (track_id,))
@@ -419,9 +421,7 @@ def toggle_favorite(conn: sqlite3.Connection, track_id: int) -> bool:
 
 
 def is_favorite(conn: sqlite3.Connection, track_id: int) -> bool:
-    return conn.execute(
-        "SELECT 1 FROM favorites WHERE track_id = ?", (track_id,)
-    ).fetchone() is not None
+    return conn.execute("SELECT 1 FROM favorites WHERE track_id = ?", (track_id,)).fetchone() is not None
 
 
 def get_all_favorite_ids(conn: sqlite3.Connection) -> set[int]:

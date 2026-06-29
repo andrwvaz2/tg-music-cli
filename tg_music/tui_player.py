@@ -41,6 +41,7 @@ class PlayerMixin:
 
     def play_track(self, track: Track, selected_index: int | None = None) -> None:
         from .local import LOCAL_CHANNEL
+
         if selected_index is not None:
             self.selected = selected_index
         self.status = f"Preparing cache: {track.display_title}"
@@ -186,6 +187,7 @@ class PlayerMixin:
             self.cover_graphics = None
             self.cover_graphics_draw_key = None
             from .render_base import clear_terminal_images
+
             clear_terminal_images()
         if track.id in self.play_queue:
             self.play_queue = [queued for queued in self.play_queue if queued != track.id]
@@ -208,10 +210,7 @@ class PlayerMixin:
             bar_width = 15
             filled = int(percent / 100 * bar_width)
             bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
-            self.cache_line = (
-                f"Cache: [{bar}] {percent:5.1f}%  ({format_bytes(downloaded)} / "
-                f"{format_bytes(total)})"
-            )
+            self.cache_line = f"Cache: [{bar}] {percent:5.1f}%  ({format_bytes(downloaded)} / {format_bytes(total)})"
         else:
             self.cache_line = f"Cache: {format_bytes(downloaded)}"
         self.draw()

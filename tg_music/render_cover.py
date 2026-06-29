@@ -23,6 +23,7 @@ class RenderCoverMixin:
         try:
             clear_terminal_images()
             import sys
+
             sys.stdout.buffer.write(f"\x1b[{row + 1};{col + 1}H".encode("ascii"))
             sys.stdout.buffer.write(self.cover_graphics)
             sys.stdout.flush()

@@ -42,7 +42,14 @@ https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 
 ---
 
-## System Compatibility
+## Requirements
+
+| Dependency | Version | Required? |
+|------------|---------|-----------|
+| Python | >= 3.11 | Yes |
+| [mpv](https://mpv.io/) | Any recent | Yes (audio playback) |
+| [chafa](https://hpjansson.org/chafa/) | Any recent | No (cover art in terminal) |
+| [uv](https://docs.astral.sh/uv/) | Any recent | Recommended (package manager) |
 
 * **Linux:** Fully supported (native experience).
 * **macOS:** Fully supported (requires installation of dependencies via Homebrew).

@@ -175,8 +175,16 @@ THEMES: dict[str, ColorTheme] = {
 }
 
 THEME_ORDER = [
-    "dark", "light", "dracula", "nord", "solarized-dark", "solarized-light",
-    "gruvbox-dark", "tokyo-night", "catppuccin", "monokai",
+    "dark",
+    "light",
+    "dracula",
+    "nord",
+    "solarized-dark",
+    "solarized-light",
+    "gruvbox-dark",
+    "tokyo-night",
+    "catppuccin",
+    "monokai",
 ]
 
 DEFAULT_THEME = "dark"

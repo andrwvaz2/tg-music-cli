@@ -8,11 +8,19 @@
 
 Terminal music player for Telegram channels.
 
+## Preview
 
+### Split View (TUI)
+Here is the 3-panel **Split View** layout rendering cover art in the terminal using `chafa`:
 
+![tg-music TUI split view](assets/screenshot.png)
 
+### Demo Video
+Check out the player in action, featuring navigation, pre-caching, and queue management:
 
+https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 
+*(Alternative local video mirror: [assets/demo.mp4](assets/demo.mp4))*
 
 ```text
 ┌──────────────────────────────────────────────────────────┐

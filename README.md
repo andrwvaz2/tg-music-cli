@@ -142,6 +142,23 @@ source .venv/bin/activate  # On Windows (cmd): .venv\Scripts\activate.bat
 pip install .
 ```
 
+### Updating
+
+To update to the latest version:
+
+```bash
+# If installed via uv tool:
+uv tool install --upgrade tg-music-cli
+
+# If cloned from git:
+cd tg-music-cli
+git pull
+uv sync
+
+# If installed via pip:
+pip install --upgrade tg-music-cli
+```
+
 ---
 
 ## Quickstart
@@ -195,6 +212,8 @@ A clean two-panel layout inspired by terminal music players like cmus/ncmpcpp:
 3. **Control:** Status bar with playback state, volume, speed, and progress bar.
 4. **Lyrics:** Dedicated box for lyrics display.
 5. **Help bar:** Footer with keyboard shortcuts.
+
+![Classic View](assets/new%20view.png)
 
 ### Split View (Press `P`)
 Splits the interface into three columns:

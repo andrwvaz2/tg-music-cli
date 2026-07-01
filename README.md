@@ -188,6 +188,14 @@ This app uses [Telethon](https://docs.telethon.dev/) (an open-source Telegram cl
 
 ## TUI Layouts
 
+### Classic View (Press `C`)
+A clean two-panel layout inspired by terminal music players like cmus/ncmpcpp:
+1. **Library:** Left panel showing channels and local folders.
+2. **Playlist:** Right panel with 4 columns: Duration, Artist, Title, Album.
+3. **Control:** Status bar with playback state, volume, speed, and progress bar.
+4. **Lyrics:** Dedicated box for lyrics display.
+5. **Help bar:** Footer with keyboard shortcuts.
+
 ### Split View (Press `P`)
 Splits the interface into three columns:
 1. **Channels:** List of added channels and local folders.
@@ -214,6 +222,9 @@ Reduces the TUI to a single bottom bar showing progress, track title, volume, an
 | `+` / `-` | Adjust volume |
 | `/` | Search in active list |
 | `r` | Refresh list |
+| `C` | Toggle Classic View |
+| `P` | Toggle Split View |
+| `M` | Toggle Mini View |
 | `q` | Exit player |
 
 ### Management and Queue

@@ -97,6 +97,7 @@ class Tui(RenderMixin, PlayerMixin):
         self.favorites_only = False
         self.split_mode = False
         self.split_panel = 0
+        self.classic_mode = False
         self.favorite_ids: set[int] = set()
         self.playlists: list[dict] = []
         self.playlist_filter: str | None = None
@@ -291,6 +292,8 @@ class Tui(RenderMixin, PlayerMixin):
             self.theme_picker()
         elif key in (ord("P"),):
             self.toggle_split_mode()
+        elif key in (ord("C"),):
+            self.toggle_classic_mode()
         elif key in (ord("t"),):
             self.tag_prompt()
         elif key in (ord("1"),):
@@ -450,6 +453,15 @@ class Tui(RenderMixin, PlayerMixin):
             self.offset = min(self.offset, self.selected)
             self.split_panel = 0
         self.status = "Split view on" if self.split_mode else "Split view off"
+        self.dirty = True
+
+    def toggle_classic_mode(self) -> None:
+        self.classic_mode = not self.classic_mode
+        if self.classic_mode:
+            self.split_mode = False
+            self.mini_mode = False
+            self.view = "tracks"
+        self.status = "Classic view on" if self.classic_mode else "Classic view off"
         self.dirty = True
 
     def toggle_lyrics(self) -> None:
@@ -1164,6 +1176,8 @@ class Tui(RenderMixin, PlayerMixin):
             self.toggle_mini_mode()
         elif cmd == "split":
             self.toggle_split_mode()
+        elif cmd == "classic":
+            self.toggle_classic_mode()
         elif cmd == "repeat":
             self.toggle_repeat()
         elif cmd == "shuffle":

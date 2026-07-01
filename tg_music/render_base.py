@@ -192,6 +192,7 @@ class RenderBaseMixin:
             self.keycap("S", "stop"),
             self.keycap("M", "mini"),
             self.keycap("P", "split"),
+            self.keycap("C", "classic"),
             self.keycap("Tab", "panel"),
             self.keycap(":", "cmd"),
             self.keycap("?", "help"),

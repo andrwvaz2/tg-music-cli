@@ -93,6 +93,9 @@ class RenderPanelsMixin:
         if self.split_mode:
             self.draw_split()
             return
+        if self.classic_mode:
+            self.draw_classic()
+            return
         self.screen.erase()
         self.cover_graphics_pos = None
         height, width = self.screen.getmaxyx()

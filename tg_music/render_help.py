@@ -95,6 +95,7 @@ class RenderHelpMixin:
                     ("L", "Toggle lyrics"),
                     ("M", "Mini player mode"),
                     ("P", "Split view (3 panels)"),
+                    ("C", "Classic view"),
                     (":", "Command mode"),
                     ("T", "Cycle theme"),
                     ("F2", "Theme picker"),

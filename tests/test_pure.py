@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from tg_music.models import Track, format_duration
 from tg_music.telegram_client import normalize_channel, safe_name, clean_message_text
 from tg_music.shared import fuzzy_match, format_bytes
@@ -336,6 +338,67 @@ class TestPlaylistCommands:
             conn.commit()
             pl = get_playlist_by_name(conn, "test_pl_reorder")
             delete_playlist(conn, pl["id"])
+
+
+class TestSearchCommands:
+    def _insert_track(self, conn, title, performer, channel="schannel", filename="f.mp3"):
+        conn.execute(
+            "INSERT INTO tracks (channel, channel_title, message_id, title, performer, filename, mime_type, size) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (channel, channel, 500000 + abs(hash(title)) % 100000, title, performer, filename, "audio/mpeg", 0),
+        )
+        conn.commit()
+        return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    def test_search_simple(self) -> None:
+        from tg_music.db import connect, search_tracks_fts
+        with connect() as conn:
+            self._insert_track(conn, "Sunset Love", "Maria", channel="rockchan")
+            self._insert_track(conn, "Midnight Rain", "John", channel="popchan")
+            results = search_tracks_fts(conn, "love", limit=20)
+            titles = [t.title for t in results]
+            assert any("Love" in t for t in titles)
+
+    def test_search_no_results(self) -> None:
+        from tg_music.db import connect, search_tracks_fts
+        with connect() as conn:
+            results = search_tracks_fts(conn, "zzzqqqnonexistent", limit=20)
+            assert results == []
+
+    def test_search_with_channel(self) -> None:
+        from tg_music.db import connect, search_tracks_fts
+        with connect() as conn:
+            self._insert_track(conn, "Echo Song", "Ana", channel="chanA")
+            self._insert_track(conn, "Echo Song", "Ana", channel="chanB")
+            results = search_tracks_fts(conn, "echo", limit=20, channel="chanA")
+            assert len(results) == 1
+            assert results[0].channel == "chanA"
+
+    def test_search_with_tag(self) -> None:
+        from tg_music.db import connect, search_tracks_fts, add_tag, tag_track
+        with connect() as conn:
+            tid = self._insert_track(conn, "Tagged Melody", "Luis", channel="tagchan")
+            add_tag(conn, "gold")
+            tag_track(conn, tid, "gold")
+            results = search_tracks_fts(conn, "melody", limit=20, tag="gold")
+            assert len(results) == 1
+            assert results[0].id == tid
+            # Tag that no track has -> empty
+            results = search_tracks_fts(conn, "melody", limit=20, tag="nonexistenttag")
+            assert results == []
+
+    def test_search_invalid_fts_syntax(self) -> None:
+        from tg_music.db import connect, search_tracks_fts, SearchQueryError
+        with connect() as conn:
+            with pytest.raises(SearchQueryError):
+                search_tracks_fts(conn, '"unclosed quote', limit=20)
+
+    def test_cmd_search_invalid_returns_one(self) -> None:
+        from argparse import Namespace
+        from tg_music import cli
+        args = Namespace(query='"unclosed quote', limit=20, channel=None, tag=None, json=False)
+        rc = cli.cmd_search(args)
+        assert rc == 1
 
 
 class TestDBFavorites:

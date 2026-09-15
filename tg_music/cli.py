@@ -39,7 +39,9 @@ from .db import (
     remove_tag,
     rename_playlist,
     reorder_playlist_track,
+    search_tracks_fts,
     set_ignored,
+    SearchQueryError,
     tag_track,
     toggle_favorite,
     untag_track,
@@ -110,9 +112,11 @@ def build_parser() -> argparse.ArgumentParser:
     list_cmd.add_argument("--tag", type=str, help="Filter by tag")
     list_cmd.set_defaults(func=cmd_list)
 
-    search = sub.add_parser("search", help="Search indexed tracks")
-    search.add_argument("query")
-    search.add_argument("--limit", type=int, default=50)
+    search = sub.add_parser("search", help="Full-text search over indexed tracks")
+    search.add_argument("query", help="FTS5 query (e.g. \"love song\")")
+    search.add_argument("--channel", help="Limit to a channel id/username")
+    search.add_argument("--tag", help="Filter by tag")
+    search.add_argument("--limit", type=int, default=20, help="Max results (default 20)")
     search.add_argument("--json", action="store_true", help="Output JSON")
     search.set_defaults(func=cmd_search)
 
@@ -343,12 +347,32 @@ def cmd_remove_channel(args: argparse.Namespace) -> int:
 
 
 def cmd_search(args: argparse.Namespace) -> int:
-    with connect() as conn:
-        tracks = list_tracks(conn, limit=args.limit, query=args.query)
+    try:
+        with connect() as conn:
+            tracks = search_tracks_fts(
+                conn,
+                query=args.query,
+                limit=args.limit,
+                channel=getattr(args, "channel", None),
+                tag=getattr(args, "tag", None),
+            )
+    except SearchQueryError as exc:
+        print(f"Consulta de búsqueda inválida: {exc}", file=sys.stderr)
+        return 1
     if getattr(args, "json", False):
         print(json.dumps([_track_to_dict(t) for t in tracks], ensure_ascii=False, indent=2))
-    else:
-        print_tracks(tracks)
+        return 0
+    if not tracks:
+        print("No se encontraron resultados para la búsqueda.")
+        return 0
+    print(f"{'ID':>5}  {'Título':38}  {'Artista':22}  Canal")
+    print("-" * 80)
+    for track in tracks:
+        title = track.title or track.filename or ""
+        artist = track.performer or ""
+        title = title if len(title) <= 38 else title[:35] + "..."
+        artist = artist if len(artist) <= 22 else artist[:19] + "..."
+        print(f"{track.id:5d}  {title:38}  {artist:22}  {track.channel_title}")
     return 0
 
 

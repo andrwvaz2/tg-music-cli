@@ -418,6 +418,43 @@ def list_tracks(
     return [_track_from_row(row) for row in rows]
 
 
+class SearchQueryError(Exception):
+    """Raised when an FTS5 MATCH query has invalid syntax."""
+
+
+def search_tracks_fts(
+    conn: sqlite3.Connection,
+    query: str,
+    limit: int = 20,
+    channel: str | None = None,
+    tag: str | None = None,
+) -> list[Track]:
+    """Full-text search over tracks_fts using FTS5 MATCH (bm25 ranking)."""
+    sql = """
+        SELECT t.* FROM tracks_fts
+        JOIN tracks t ON t.id = tracks_fts.rowid
+        WHERE tracks_fts MATCH ?
+          AND t.ignored = 0
+    """
+    params: list[object] = [query]
+    if channel:
+        sql += " AND t.channel = ?"
+        params.append(channel)
+    if tag:
+        sql += (
+            " AND t.id IN (SELECT tt.track_id FROM track_tags tt "
+            "JOIN tags tg ON tt.tag_id = tg.id WHERE tg.name = ?)"
+        )
+        params.append(tag)
+    sql += " ORDER BY bm25(tracks_fts) LIMIT ?"
+    params.append(limit)
+    try:
+        rows = conn.execute(sql, params).fetchall()
+    except sqlite3.OperationalError as exc:
+        raise SearchQueryError(str(exc)) from exc
+    return [_track_from_row(row) for row in rows]
+
+
 def list_uncached_tracks(
     conn: sqlite3.Connection,
     limit: int = 50,

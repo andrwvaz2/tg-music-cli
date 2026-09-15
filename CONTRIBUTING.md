@@ -39,23 +39,28 @@ All tests should pass before submitting a PR.
 
 ```
 tg_music/
+├── cache.py            # Cache manager & download worker pool
 ├── cli.py              # CLI commands (argparse)
 ├── config.py           # AppSettings, load/save
-├── db.py               # SQLite database layer
+├── cover.py            # Cover art extraction
+├── db.py               # SQLite database layer & FTS5 search
+├── local.py            # Local folder playback
+├── lyrics.py           # Lyrics fetching from lrclib
 ├── models.py           # Track, Channel dataclasses
 ├── player.py           # BackgroundPlayer (mpv IPC)
-├── telegram_client.py  # Telethon client
-├── cover.py            # Cover art extraction
-├── lyrics.py           # Lyrics fetching
-├── local.py            # Local folder playback
-├── tui.py              # TUI main class
-├── tui_player.py       # PlayerMixin (playback logic)
-├── tui_render.py       # RenderMixin (compositor)
 ├── render_base.py      # Helpers, colors, keybinds
+├── render_classic.py   # 2-panel classic layout (cmus style)
+├── render_cover.py     # Cover art rendering via chafa
+├── render_help.py      # Help overlay, mini view
 ├── render_panels.py    # Tracks, channels, detail panels
 ├── render_split.py     # 3-panel split view
-├── render_cover.py     # Cover art rendering
-└── render_help.py      # Help overlay, mini view
+├── shared.py           # Shared state & utility functions
+├── telegram_client.py  # Telethon client & session management
+├── themes.py           # Color themes definitions
+├── tui.py              # TUI main class & orchestrator
+├── tui_player.py       # PlayerMixin (playback logic)
+├── tui_render.py       # RenderMixin (compositor)
+└── welcome.py          # Setup wizard & welcome screen
 ```
 
 ## Reporting bugs

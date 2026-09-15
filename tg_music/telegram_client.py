@@ -7,6 +7,11 @@ from typing import Callable
 from urllib.parse import urlparse
 
 from telethon import TelegramClient
+from telethon.errors import (
+    AuthKeyError,
+    AuthKeyUnregisteredError,
+    UnauthorizedError,
+)
 from telethon.tl.types import (
     DocumentAttributeAudio,
     DocumentAttributeFilename,
@@ -40,6 +45,56 @@ def get_client() -> TelegramClient:
     return TelegramClient(str(SESSION_FILE), cfg.api_id, cfg.api_hash)
 
 
+# Flag consultable por el TUI: se activa cuando una operación de red
+# falla con 401 (sesión expirada/inválida) en lugar de crashear.
+session_expired: bool = False
+
+
+def mark_session_expired() -> None:
+    global session_expired
+    session_expired = True
+
+
+def is_session_expired() -> bool:
+    return session_expired
+
+
+def reset_session_expired() -> None:
+    global session_expired
+    session_expired = False
+
+
+def invalidate_session() -> None:
+    """Borra el session file y sus posibles archivos SQLite asociados."""
+    for suffix in ("", "-journal", "-wal", "-shm"):
+        path = Path(str(SESSION_FILE) + suffix)
+        if path.exists():
+            try:
+                path.unlink()
+            except OSError:
+                pass
+
+
+async def is_authorized_async() -> bool:
+    if not SESSION_FILE.exists():
+        return False
+    try:
+        async with get_client() as client:
+            return await client.is_user_authorized()
+    except AuthKeyUnregisteredError:
+        invalidate_session()
+        return False
+    except AuthKeyError:
+        invalidate_session()
+        return False
+    except UnauthorizedError:
+        return False
+    except Exception:
+        # Sin red o cualquier otro fallo: asumir no autorizado y dejar que
+        # el flujo de login decida. No crashear aquí.
+        return False
+
+
 async def _scan_channel_impl(
     channel: str,
     limit: int,
@@ -49,7 +104,11 @@ async def _scan_channel_impl(
     count = 0
     batch: list[dict[str, object]] = []
     async with get_client() as client:
-        entity = await client.get_entity(channel_name)
+        try:
+            entity = await client.get_entity(channel_name)
+        except (UnauthorizedError, AuthKeyUnregisteredError):
+            mark_session_expired()
+            raise
         title = getattr(entity, "title", channel_name) or channel_name
         username = getattr(entity, "username", None) or channel_name
 
@@ -116,8 +175,12 @@ async def download_track_with_client(
     target_dir = AUDIO_CACHE_DIR / safe_name(track.channel)
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    entity = await client.get_entity(track.channel)
-    message = await client.get_messages(entity, ids=track.message_id)
+    try:
+        entity = await client.get_entity(track.channel)
+        message = await client.get_messages(entity, ids=track.message_id)
+    except (UnauthorizedError, AuthKeyUnregisteredError):
+        mark_session_expired()
+        raise
     if message is None:
         raise RuntimeError("No encontre el mensaje original en Telegram.")
 
@@ -136,6 +199,9 @@ async def download_track_with_client(
             if downloaded is None:
                 raise RuntimeError("Telegram no entrego ningun archivo descargable.")
             return Path(downloaded)
+        except (UnauthorizedError, AuthKeyUnregisteredError):
+            mark_session_expired()
+            raise
         except Exception as exc:
             last_error = exc
             if attempt < max_retries - 1:
@@ -151,8 +217,12 @@ async def download_cover(track: Track) -> Path | None:
 
     COVER_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     async with get_client() as client:
-        entity = await client.get_entity(track.channel)
-        message = await client.get_messages(entity, ids=track.message_id)
+        try:
+            entity = await client.get_entity(track.channel)
+            message = await client.get_messages(entity, ids=track.message_id)
+        except (UnauthorizedError, AuthKeyUnregisteredError):
+            mark_session_expired()
+            raise
         if message is None or not message.media:
             return None
         target = COVER_CACHE_DIR / f"{track.channel}-{track.message_id}-cover"

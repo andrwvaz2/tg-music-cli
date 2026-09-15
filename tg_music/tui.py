@@ -10,6 +10,18 @@ import traceback
 from curses import wrapper
 from pathlib import Path
 
+from telethon.errors import (
+    AuthKeyError,
+    AuthKeyUnregisteredError,
+    FloodWaitError,
+    PasswordHashInvalidError,
+    PhoneCodeExpiredError,
+    PhoneCodeInvalidError,
+    RPCError,
+    SessionPasswordNeededError,
+    UnauthorizedError,
+)
+
 from .cache import cache_tracks_async
 from .config import DATA_DIR, load_settings, save_settings
 from .themes import THEMES, ColorTheme, get_theme, list_themes
@@ -36,10 +48,22 @@ from .lyrics import fetch_lyrics
 from .models import Channel, Track
 from .player import BackgroundPlayer
 from .shared import fuzzy_match, notify_user
-from .telegram_client import normalize_channel, scan_channel, scan_channel_since
+from .telegram_client import (
+    get_client,
+    is_authorized_async,
+    is_session_expired,
+    normalize_channel,
+    reset_session_expired,
+    scan_channel,
+    scan_channel_since,
+)
 from .tui_render import RenderMixin
 from .render_base import clear_terminal_images
 from .tui_player import PlayerMixin
+
+
+class _LoginCancelled(Exception):
+    """El usuario canceló el login (Esc en un prompt)."""
 
 
 class Tui(RenderMixin, PlayerMixin):
@@ -150,6 +174,10 @@ class Tui(RenderMixin, PlayerMixin):
         self.screen.timeout(self.input_timeout_ms)
         self.reload()
         self.start_watch_thread()
+        if not self._is_authorized():
+            self.stop_watch_thread()
+            self.login_modal()
+            self.start_watch_thread()
         self.last_screen_size = self.screen.getmaxyx()
         try:
             while True:
@@ -158,6 +186,11 @@ class Tui(RenderMixin, PlayerMixin):
                     self.last_screen_size = current_size
                     self.dirty = True
                     clear_terminal_images()
+
+                if is_session_expired() and not getattr(self, "_session_expired_notified", False):
+                    self.status = "Sesión expirada — usa :login"
+                    self._session_expired_notified = True
+                    self.dirty = True
 
                 if self.play_start_time is not None:
                     if self.player.is_playing():
@@ -1223,6 +1256,108 @@ class Tui(RenderMixin, PlayerMixin):
             self.status = f"Playing search result: {chosen.display_title}"
         self.dirty = True
 
+    def _is_authorized(self) -> bool:
+        try:
+            return asyncio.run(is_authorized_async())
+        except Exception:
+            return False
+
+    def _login_read(self, prompt: str, mask: bool = False) -> str:
+        result = self.input_prompt(prompt, mask=mask)
+        if result == "":
+            raise _LoginCancelled()
+        return result
+
+    async def _do_login(self, phone: str) -> None:
+        client = get_client()
+        try:
+            await client.start(
+                phone=phone,
+                code_callback=lambda: self._login_read("Código recibido: "),
+                password=lambda: self._login_read("Contraseña 2FA: ", mask=True),
+                max_attempts=3,
+            )
+        finally:
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+
+    def _draw_login_box(
+        self, start_y: int, start_x: int, overlay_w: int, overlay_h: int, status: str
+    ) -> None:
+        frame_attr = self.color_attr(self.color_primary, curses.COLOR_BLACK) | curses.A_BOLD
+        title_attr = self.color_attr(curses.COLOR_BLACK, curses.COLOR_CYAN) | curses.A_BOLD
+        for row in range(start_y, start_y + overlay_h):
+            self.add(row, start_x, " " * overlay_w, curses.A_NORMAL)
+        self.add(start_y, start_x, "\u250c" + "\u2500" * (overlay_w - 2) + "\u2510", frame_attr)
+        for row in range(start_y + 1, start_y + overlay_h - 1):
+            self.add(row, start_x, "\u2502", frame_attr)
+            self.add(row, start_x + overlay_w - 1, "\u2502", frame_attr)
+        self.add(
+            start_y + overlay_h - 1, start_x, "\u2514" + "\u2500" * (overlay_w - 2) + "\u2518", frame_attr
+        )
+        title = " TELEGRAM LOGIN "
+        self.add(start_y, start_x + max(2, (overlay_w - len(title)) // 2), title, title_attr)
+        hint = "Esc: cancelar"
+        self.add(
+            start_y + overlay_h - 1, start_x + max(2, (overlay_w - len(hint)) // 2), hint, frame_attr
+        )
+        if status:
+            self.add(start_y + 1, start_x + 2, status[: overlay_w - 4], curses.A_DIM)
+
+    def login_modal(self) -> None:
+        self.stop_watch_thread()
+        try:
+            height, width = self.screen.getmaxyx()
+            overlay_h = min(height - 3, 12)
+            overlay_w = min(width - 4, 64)
+            start_y = max(2, (height - overlay_h) // 2)
+            start_x = max(2, (width - overlay_w) // 2)
+            self.status = "Inicia sesion en Telegram para continuar."
+            while True:
+                self.screen.erase()
+                self._draw_login_box(start_y, start_x, overlay_w, overlay_h, self.status)
+                self.screen.refresh()
+                try:
+                    phone = self._login_read("Telefono (+codigo de pais): ")
+                except _LoginCancelled:
+                    break
+                try:
+                    asyncio.run(self._do_login(phone))
+                    reset_session_expired()
+                    self.status = "Sesion iniciada correctamente."
+                    self.dirty = True
+                    break
+                except _LoginCancelled:
+                    break
+                except FloodWaitError as exc:
+                    self.status = (
+                        f"Demasiados intentos. Espera {getattr(exc, 'seconds', '?')}s e intenta de nuevo."
+                    )
+                    self.dirty = True
+                    break
+                except (PhoneCodeInvalidError, PhoneCodeExpiredError):
+                    self.status = "Codigo invalido o expirado. Vuelve a intentarlo."
+                    continue
+                except PasswordHashInvalidError:
+                    self.status = "Contrasena 2FA incorrecta. Vuelve a intentarlo."
+                    continue
+                except SessionPasswordNeededError:
+                    self.status = "Se requiere la contrasena 2FA."
+                    continue
+                except (UnauthorizedError, AuthKeyUnregisteredError, AuthKeyError):
+                    self.status = "Sesion invalida. Vuelve a intentarlo."
+                    continue
+                except (ConnectionError, TimeoutError, RPCError) as exc:
+                    self.status = f"Error de red: {exc}. Reintenta."
+                    continue
+                except Exception as exc:
+                    self.status = f"Error: {exc}"
+                    continue
+        finally:
+            self.start_watch_thread()
+
     def command_mode_prompt(self) -> None:
         clear_terminal_images()
         self.set_cursor_visible(True)
@@ -1301,6 +1436,10 @@ class Tui(RenderMixin, PlayerMixin):
             self.toggle_lyrics()
         elif cmd == "channels":
             self.show_channels()
+        elif cmd == "login":
+            self.stop_watch_thread()
+            self.login_modal()
+            self.start_watch_thread()
         elif cmd == "stop":
             self.stop_playback()
         elif cmd == "next":
@@ -1328,7 +1467,7 @@ class Tui(RenderMixin, PlayerMixin):
         else:
             self.status = f"Unknown command: {cmd} (? for help)"
 
-    def input_prompt(self, prompt: str, max_len: int = 160) -> str:
+    def input_prompt(self, prompt: str, max_len: int = 160, mask: bool = False) -> str:
         clear_terminal_images()
         self.set_cursor_visible(True)
         self.pause_input_timeout()
@@ -1350,13 +1489,13 @@ class Tui(RenderMixin, PlayerMixin):
                         buf.pop()
                         y = height - 1
                         self.add(y, 0, " " * max(width - 1, 0))
-                        display = prompt + "".join(buf)
+                        display = prompt + ("*" * len(buf) if mask else "".join(buf))
                         self.add(y, 0, display[: max(width - 1, 0)])
                 elif 32 <= key < 256 and len(buf) < max_len:
                     buf.append(key)
                     y = height - 1
                     self.add(y, 0, " " * max(width - 1, 0))
-                    display = prompt + "".join(buf)
+                    display = prompt + ("*" * len(buf) if mask else "".join(buf))
                     self.add(y, 0, display[: max(width - 1, 0)])
                 self.screen.refresh()
         finally:

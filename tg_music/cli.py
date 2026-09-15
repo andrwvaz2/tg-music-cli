@@ -82,6 +82,9 @@ def build_parser() -> argparse.ArgumentParser:
     init = sub.add_parser("init", help="Configure Telegram api_id and api_hash")
     init.set_defaults(func=cmd_init)
 
+    login = sub.add_parser("login", help="Log in to Telegram (interactive prompt)")
+    login.set_defaults(func=cmd_login)
+
     scan = sub.add_parser("scan", help="Scan audio from a channel")
     scan.add_argument("channel", help="Channel URL, @username, or username")
     scan.add_argument("--limit", type=int, default=300, help="Messages to scan")
@@ -295,6 +298,21 @@ def cmd_init(_args: argparse.Namespace) -> int:
     save_config(api_id, api_hash)
     print(f"\nConfig saved to {CONFIG_FILE}")
     print("Siguiente paso: tg-music scan https://t.me/Christian_Electronic --limit 300")
+    return 0
+
+
+def cmd_login(_args: argparse.Namespace) -> int:
+    from .telegram_client import get_client
+
+    async def _run() -> None:
+        client = get_client()
+        await client.start()  # usa input() nativo: no hay curses activo aqui
+        me = await client.get_me()
+        await client.disconnect()
+        name = me.username or me.first_name or me.id
+        print(f"Sesion iniciada como {name}")
+
+    asyncio.run(_run())
     return 0
 
 

@@ -60,7 +60,7 @@ class RenderSplitMixin:
         if self.favorites_only:
             header_text += " \u25b8 \u2665 Fav"
         self.screen.addnstr(0, 0, header_text[: width - 1], width - 1, hdr_bg)
-        ver = "v0.1.0"
+        ver = "v0.2.0"
         self.screen.addnstr(0, max(0, width - len(ver) - 1), ver, len(ver), hdr_dim)
 
         self.screen.addnstr(1, 0, f"Status: {self.status}"[: width - 1], width - 1, body_attr)

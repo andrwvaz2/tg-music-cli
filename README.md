@@ -251,10 +251,13 @@ Reduces the TUI to a single bottom bar showing progress, track title, volume, an
 | Key | Action |
 |---|---|
 | `e` | Enqueue selected track |
-| `[` / `]` | Move track up/down in the play queue |
+| `[` / `]` | Move track in play queue (or reorder within a playlist when viewing one) |
 | `f` | Toggle favorite status |
 | `1` | Filter list by favorites |
 | `t` | Edit tags for selected track |
+| `y` | Show playlists |
+| `Y` | Add selected track to a playlist (creates one if needed) |
+| `G` | Global full-text search (FTS5) across all tracks |
 | `L` | Toggle lyrics display |
 | `m` | Download all missing tracks in current view |
 | `u` | Scan older tracks in selected channel |

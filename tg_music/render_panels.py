@@ -130,7 +130,7 @@ class RenderPanelsMixin:
             breadcrumb = breadcrumb[: width - 4] + "..."
         self.add(0, 0, breadcrumb, header_attr)
 
-        right_text = "v0.1.0"
+        right_text = "v0.2.0"
         self.add(0, max(0, width - len(right_text) - 1), right_text, header_dim)
 
         cache_status = self.cache_line[7:] if self.cache_line.startswith("Cache: ") else self.cache_line

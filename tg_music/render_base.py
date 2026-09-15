@@ -185,6 +185,7 @@ class RenderBaseMixin:
             self.keycap("t", "tag"),
             self.keycap("y", "playlists"),
             self.keycap("Y", "add pl"),
+            self.keycap("G", "g-search"),
             self.keycap("g", "local"),
             self.keycap("/", "search"),
             self.keycap("s", "shuffle"),

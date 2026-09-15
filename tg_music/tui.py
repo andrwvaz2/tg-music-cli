@@ -26,6 +26,9 @@ from .db import (
     list_playlists,
     list_tracks,
     list_uncached_tracks,
+    reorder_playlist_track,
+    search_tracks_fts,
+    SearchQueryError,
     tag_track,
     toggle_favorite,
 )
@@ -263,9 +266,15 @@ class Tui(RenderMixin, PlayerMixin):
                 self.status = ["Channels", "Tracks", "Details"][self.split_panel] + " panel"
                 self.dirty = True
         elif key in (ord("["),):
-            self.move_queue(-1)
+            if self.playlist_filter:
+                self.reorder_playlist_track_ui(-1)
+            else:
+                self.move_queue(-1)
         elif key in (ord("]"),):
-            self.move_queue(1)
+            if self.playlist_filter:
+                self.reorder_playlist_track_ui(1)
+            else:
+                self.move_queue(1)
         elif key in (ord("/"),):
             self.search()
         elif key in (ord(":"),):
@@ -304,6 +313,8 @@ class Tui(RenderMixin, PlayerMixin):
             self.add_to_playlist_prompt()
         elif key in (ord("g"),):
             self.focus_local_entry()
+        elif key in (ord("G"),):
+            self.global_search()
         elif key in (10, 13):
             if self.split_mode:
                 if self.split_panel == 0:
@@ -313,7 +324,7 @@ class Tui(RenderMixin, PlayerMixin):
             elif self.view == "channels":
                 self.open_selected_channel()
             elif self.view == "playlists":
-                self.open_selected_playlist()
+                self.play_selected_playlist()
             else:
                 self.play_selected()
         self.dirty = True
@@ -1108,6 +1119,110 @@ class Tui(RenderMixin, PlayerMixin):
         self.reload()
         self.dirty = True
 
+    def global_search(self) -> None:
+        clear_terminal_images()
+        self.set_cursor_visible(True)
+        self.pause_input_timeout()
+        height, width = self.screen.getmaxyx()
+        overlay_h = min(height - 4, 26)
+        overlay_w = min(width - 4, 100)
+        start_y = max(2, (height - overlay_h) // 2)
+        start_x = max(2, (width - overlay_w) // 2)
+        query = ""
+        results: list = []
+        selected = 0
+        last_query: str | None = None
+        chosen: Track | None = None
+        try:
+            while True:
+                if query != last_query:
+                    last_query = query
+                    selected = 0
+                    results = []
+                    if query.strip():
+                        try:
+                            with connect() as conn:
+                                results = search_tracks_fts(conn, query, limit=100)
+                        except SearchQueryError as exc:
+                            self.status = f"Consulta inválida: {exc}"
+                            results = []
+                self.screen.erase()
+                frame_attr = self.color_attr(self.color_primary, curses.COLOR_BLACK) | curses.A_BOLD
+                title_attr = self.color_attr(curses.COLOR_BLACK, curses.COLOR_CYAN) | curses.A_BOLD
+                for row in range(start_y, start_y + overlay_h):
+                    self.add(row, start_x, " " * overlay_w, curses.A_NORMAL)
+                self.add(start_y, start_x, "\u250c" + "\u2500" * (overlay_w - 2) + "\u2510", frame_attr)
+                for row in range(start_y + 1, start_y + overlay_h - 1):
+                    self.add(row, start_x, "\u2502", frame_attr)
+                    self.add(row, start_x + overlay_w - 1, "\u2502", frame_attr)
+                self.add(
+                    start_y + overlay_h - 1, start_x, "\u2514" + "\u2500" * (overlay_w - 2) + "\u2518", frame_attr
+                )
+                title = " GLOBAL SEARCH (FTS5) "
+                self.add(start_y, start_x + max(2, (overlay_w - len(title)) // 2), title, title_attr)
+                self.add(start_y + 1, start_x + 2, f"Search: {query}_"[: overlay_w - 4], curses.A_NORMAL)
+
+                body_top = start_y + 3
+                body_h = overlay_h - 5
+                if not query.strip():
+                    self.add(body_top, start_x + 2, "Type to search across all indexed tracks...", curses.A_DIM)
+                elif not results:
+                    self.add(body_top, start_x + 2, "No se encontraron resultados para la búsqueda.", curses.A_DIM)
+                else:
+                    top = max(0, min(selected - body_h // 2, len(results) - body_h))
+                    visible = results[top : top + body_h]
+                    for i, track in enumerate(visible):
+                        y = body_top + i
+                        is_sel = top + i == selected
+                        line = f"  {track.id:5d}  {track.display_title[: overlay_w - 12]}"
+                        if is_sel:
+                            attr = self.color_attr(curses.COLOR_BLACK, curses.COLOR_CYAN) | curses.A_BOLD
+                        else:
+                            attr = curses.A_NORMAL
+                        self.add(y, start_x + 2, line[: overlay_w - 4], attr)
+                hint = "Enter: play  Arrows/j/k: navigate  Esc/q: close"
+                self.add(
+                    start_y + overlay_h - 1,
+                    start_x + max(2, (overlay_w - len(hint)) // 2),
+                    hint,
+                    frame_attr,
+                )
+                self.screen.refresh()
+
+                ch = self.screen.getch()
+                if ch in (27, ord("q")):
+                    break
+                elif ch in (10, 13):
+                    if results and 0 <= selected < len(results):
+                        chosen = results[selected]
+                    break
+                elif ch in (curses.KEY_UP, ord("k")):
+                    selected = max(0, selected - 1)
+                elif ch in (curses.KEY_DOWN, ord("j")):
+                    selected = min(max(len(results) - 1, 0), selected + 1)
+                elif ch in (curses.KEY_NPAGE,):
+                    selected = min(max(len(results) - 1, 0), selected + 10)
+                elif ch in (curses.KEY_PPAGE,):
+                    selected = max(0, selected - 10)
+                elif ch in (curses.KEY_BACKSPACE, 127, 8):
+                    query = query[:-1]
+                elif 32 <= ch < 256:
+                    query += chr(ch)
+        finally:
+            self.restore_input_timeout()
+            self.set_cursor_visible(False)
+        if chosen is not None:
+            self.view = "tracks"
+            self.playlist_filter = None
+            self.channel_filter = None
+            self.query = ""
+            self.tracks = results
+            self.selected = selected
+            self.offset = 0
+            self.play_track(chosen, selected_index=selected)
+            self.status = f"Playing search result: {chosen.display_title}"
+        self.dirty = True
+
     def command_mode_prompt(self) -> None:
         clear_terminal_images()
         self.set_cursor_visible(True)
@@ -1405,6 +1520,27 @@ class Tui(RenderMixin, PlayerMixin):
             return
         self.play_queue[index], self.play_queue[target] = self.play_queue[target], self.play_queue[index]
         self.status = "Queue moved"
+        self.dirty = True
+
+    def reorder_playlist_track_ui(self, delta: int) -> None:
+        if not self.playlist_filter or not self.tracks:
+            return
+        with connect() as conn:
+            pl = get_playlist_by_name(conn, self.playlist_filter)
+            if pl is None:
+                self.status = "Playlist no longer exists"
+                self.dirty = True
+                return
+            track = self.tracks[self.selected]
+            new_position = self.selected + delta
+            if new_position < 0 or new_position >= len(self.tracks):
+                self.status = "Cannot move further"
+                self.dirty = True
+                return
+            reorder_playlist_track(conn, pl["id"], track.id, new_position)
+            self.tracks = get_playlist_tracks(conn, pl["id"])
+            self.selected = new_position
+            self.status = f"Moved '{track.display_title}' to position {new_position + 1}"
         self.dirty = True
 
     def show_channels(self) -> None:

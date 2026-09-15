@@ -7,7 +7,7 @@ import time
 
 from .cache import cache_tracks_async
 from .cover import extract_embedded_cover
-from .db import connect, get_track, list_tracks, record_play, set_ignored
+from .db import connect, get_playlist_tracks, get_track, list_playlists, list_tracks, record_play, set_ignored
 from .models import Track
 from .shared import delete_cached_files, format_bytes
 from .telegram_client import download_cover, download_track
@@ -28,7 +28,7 @@ class PlayerMixin:
                 self.play_track(track, selected_index=track_index)
             return
         if self.view == "playlists":
-            self.open_selected_playlist()
+            self.play_selected_playlist()
             return
         if self.favorites_only or self.tag_filter:
             filtered = self.tracks
@@ -38,6 +38,32 @@ class PlayerMixin:
             return
         track = self.tracks[self.selected]
         self.play_track(track, selected_index=self.selected)
+
+    def play_selected_playlist(self) -> None:
+        with connect() as conn:
+            self.playlists = list_playlists(conn)
+        if not self.playlists:
+            self.status = "No playlists"
+            self.dirty = True
+            return
+        if not (0 <= self.selected < len(self.playlists)):
+            self.selected = 0
+        pl = self.playlists[self.selected]
+        with connect() as conn:
+            tracks = get_playlist_tracks(conn, pl["id"])
+        if not tracks:
+            self.status = f"Playlist '{pl['name']}' is empty"
+            self.dirty = True
+            return
+        self.playlist_filter = pl["name"]
+        self.view = "tracks"
+        self.channel_filter = None
+        self.query = ""
+        self.tracks = tracks
+        self.selected = 0
+        self.offset = 0
+        self.play_track(self.tracks[0], selected_index=0)
+        self.status = f"Playing playlist: {pl['name']} ({len(tracks)} tracks)"
 
     def play_track(self, track: Track, selected_index: int | None = None) -> None:
         from .local import LOCAL_CHANNEL

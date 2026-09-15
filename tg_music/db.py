@@ -97,6 +97,7 @@ def connect(db_file: Path | None = None) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(SCHEMA)
     ensure_migrations(conn)
+    ensure_fts(conn)
     return conn
 
 
@@ -133,6 +134,89 @@ def ensure_migrations(conn: sqlite3.Connection) -> None:
             """
         )
         conn.commit()
+
+
+def ensure_fts(conn: sqlite3.Connection) -> None:
+    """Create FTS5 index and playlist_tracks.added_at if missing."""
+    # ── playlist_tracks.added_at ──
+    pt_columns = {row["name"] for row in conn.execute("PRAGMA table_info(playlist_tracks)").fetchall()}
+    if "added_at" not in pt_columns:
+        with DB_WRITE_LOCK:
+            conn.execute("ALTER TABLE playlist_tracks ADD COLUMN added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP")
+            conn.commit()
+
+    # ── Index for fast reorder ──
+    with DB_WRITE_LOCK:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_playlist_tracks_pos ON playlist_tracks(playlist_id, position)")
+        conn.commit()
+
+    # ── FTS5 virtual table ──
+    fts_tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    if "tracks_fts" not in fts_tables:
+        with DB_WRITE_LOCK:
+            conn.execute(
+                """
+                CREATE VIRTUAL TABLE tracks_fts USING fts5(
+                    title,
+                    performer,
+                    filename,
+                    content='tracks',
+                    content_rowid='id'
+                )
+                """
+            )
+            conn.commit()
+
+        # Populate index with existing data
+        with DB_WRITE_LOCK:
+            conn.execute(
+                """
+                INSERT INTO tracks_fts(rowid, title, performer, filename)
+                SELECT id, title, performer, filename FROM tracks
+                """
+            )
+            conn.commit()
+
+    # ── Triggers to keep FTS in sync ──
+    trigger_names = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger'").fetchall()}
+
+    if "tracks_ai" not in trigger_names:
+        with DB_WRITE_LOCK:
+            conn.execute(
+                """
+                CREATE TRIGGER tracks_ai AFTER INSERT ON tracks BEGIN
+                    INSERT INTO tracks_fts(rowid, title, performer, filename)
+                    VALUES (new.id, new.title, new.performer, new.filename);
+                END
+                """
+            )
+            conn.commit()
+
+    if "tracks_ad" not in trigger_names:
+        with DB_WRITE_LOCK:
+            conn.execute(
+                """
+                CREATE TRIGGER tracks_ad AFTER DELETE ON tracks BEGIN
+                    INSERT INTO tracks_fts(tracks_fts, rowid, title, performer, filename)
+                    VALUES ('delete', old.id, old.title, old.performer, old.filename);
+                END
+                """
+            )
+            conn.commit()
+
+    if "tracks_au" not in trigger_names:
+        with DB_WRITE_LOCK:
+            conn.execute(
+                """
+                CREATE TRIGGER tracks_au AFTER UPDATE ON tracks BEGIN
+                    INSERT INTO tracks_fts(tracks_fts, rowid, title, performer, filename)
+                    VALUES ('delete', old.id, old.title, old.performer, old.filename);
+                    INSERT INTO tracks_fts(rowid, title, performer, filename)
+                    VALUES (new.id, new.title, new.performer, new.filename);
+                END
+                """
+            )
+            conn.commit()
 
 
 def upsert_tracks_batch(conn: sqlite3.Connection, items: list[dict[str, object]]) -> None:

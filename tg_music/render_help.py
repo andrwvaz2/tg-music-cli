@@ -3,6 +3,7 @@ from __future__ import annotations
 import curses
 import time
 
+from . import get_version
 from .models import format_duration
 from .render_base import clear_terminal_images
 
@@ -136,7 +137,7 @@ class RenderHelpMixin:
 
         header_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
         self.screen.addnstr(0, 0, "\u266b TG-MUSIC Mini", width - 1, header_attr)
-        right_text = "v0.1.0"
+        right_text = get_version()
         self.screen.addnstr(
             0, max(0, width - len(right_text) - 1), right_text, len(right_text), header_attr | curses.A_DIM
         )

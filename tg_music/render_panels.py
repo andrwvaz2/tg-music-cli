@@ -3,6 +3,7 @@ from __future__ import annotations
 import curses
 import time
 
+from . import get_version
 from .db import connect, get_track_tags, is_favorite
 from .models import format_duration
 from .render_base import wrap
@@ -130,7 +131,7 @@ class RenderPanelsMixin:
             breadcrumb = breadcrumb[: width - 4] + "..."
         self.add(0, 0, breadcrumb, header_attr)
 
-        right_text = "v0.2.0"
+        right_text = get_version()
         self.add(0, max(0, width - len(right_text) - 1), right_text, header_dim)
 
         cache_status = self.cache_line[7:] if self.cache_line.startswith("Cache: ") else self.cache_line

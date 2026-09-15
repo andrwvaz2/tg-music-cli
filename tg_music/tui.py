@@ -1476,7 +1476,7 @@ class Tui(RenderMixin, PlayerMixin):
             self.add(height - 1, 0, " " * max(width - 1, 0))
             self.add(height - 1, 0, prompt[: max(width - 1, 0)])
             self.screen.refresh()
-            buf: list[int] = []
+            buf: list[str] = []
             while True:
                 key = self.screen.getch()
                 if key == 27:
@@ -1492,7 +1492,7 @@ class Tui(RenderMixin, PlayerMixin):
                         display = prompt + ("*" * len(buf) if mask else "".join(buf))
                         self.add(y, 0, display[: max(width - 1, 0)])
                 elif 32 <= key < 256 and len(buf) < max_len:
-                    buf.append(key)
+                    buf.append(chr(key))
                     y = height - 1
                     self.add(y, 0, " " * max(width - 1, 0))
                     display = prompt + ("*" * len(buf) if mask else "".join(buf))

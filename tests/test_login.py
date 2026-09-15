@@ -115,6 +115,15 @@ def _make_stub():
         def stop_watch_thread(self):
             self.stop_calls += 1
 
+        def set_cursor_visible(self, visible):
+            pass
+
+        def pause_input_timeout(self):
+            pass
+
+        def restore_input_timeout(self):
+            pass
+
     stub = Stub()
     stub.login_modal = _method(Tui.login_modal, stub)
     stub._do_login = _method(Tui._do_login, stub)
@@ -234,3 +243,31 @@ def test_login_read_esc_raises():
     stub.screen.getch.return_value = 27
     with pytest.raises(_LoginCancelled):
         stub._login_read("Tel: ")
+
+
+def test_input_prompt_accepts_digits(monkeypatch):
+    import curses
+
+    stub = _make_stub()
+    stub.input_prompt = _method(Tui.input_prompt, stub)
+    keys = [ord("5"), ord("4"), ord("1"), ord("2"), 10]
+    stub.screen.getch = lambda: keys.pop(0) if keys else -1
+    stub.screen.getmaxyx.return_value = (24, 80)
+    monkeypatch.setattr(curses, "noecho", lambda: None)
+    monkeypatch.setattr(curses, "beep", lambda: None)
+    result = stub.input_prompt("Telefono: ")
+    assert result == "5412"
+
+
+def test_input_prompt_masked_returns_plain(monkeypatch):
+    import curses
+
+    stub = _make_stub()
+    stub.input_prompt = _method(Tui.input_prompt, stub)
+    keys = [ord("s"), ord("3"), ord("c"), ord("r"), 10]
+    stub.screen.getch = lambda: keys.pop(0) if keys else -1
+    stub.screen.getmaxyx.return_value = (24, 80)
+    monkeypatch.setattr(curses, "noecho", lambda: None)
+    monkeypatch.setattr(curses, "beep", lambda: None)
+    result = stub.input_prompt("Contrasena: ", mask=True)
+    assert result == "s3cr"

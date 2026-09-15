@@ -139,7 +139,7 @@ wheels = [
 
 [[package]]
 name = "tg-music-cli"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "mutagen" },

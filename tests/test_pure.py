@@ -227,6 +227,117 @@ class TestDBPlaylists:
             assert isinstance(pl["count"], int)
 
 
+class TestPlaylistCommands:
+    def test_create_and_list(self) -> None:
+        from tg_music.db import connect, create_playlist, list_playlists, delete_playlist, get_playlist_by_name
+        with connect() as conn:
+            pl_id = create_playlist(conn, "test_pl_cmd")
+            assert isinstance(pl_id, int)
+            playlists = list_playlists(conn)
+            names = [p["name"] for p in playlists]
+            assert "test_pl_cmd" in names
+            pl = get_playlist_by_name(conn, "test_pl_cmd")
+            assert pl is not None
+            delete_playlist(conn, pl["id"])
+
+    def test_add_and_show(self) -> None:
+        from tg_music.db import (
+            connect, create_playlist, delete_playlist, get_playlist_by_name,
+            add_to_playlist, get_playlist_tracks, get_track,
+        )
+        with connect() as conn:
+            pl_id = create_playlist(conn, "test_pl_show")
+            # Insert a real track so FK passes
+            conn.execute(
+                "INSERT INTO tracks (channel, channel_title, message_id, title, performer, mime_type, size) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("test", "Test", 99999, "Test Song", "Test Artist", "audio/mpeg", 0),
+            )
+            conn.commit()
+            track = get_track(conn, conn.execute("SELECT last_insert_rowid()").fetchone()[0])
+            add_to_playlist(conn, pl_id, track.id)
+            tracks = get_playlist_tracks(conn, pl_id)
+            assert len(tracks) == 1
+            assert tracks[0].title == "Test Song"
+            # Cleanup
+            conn.execute("DELETE FROM tracks WHERE id = ?", (track.id,))
+            conn.commit()
+            pl = get_playlist_by_name(conn, "test_pl_show")
+            delete_playlist(conn, pl["id"])
+
+    def test_remove_compacts_positions(self) -> None:
+        from tg_music.db import (
+            connect, create_playlist, delete_playlist, get_playlist_by_name,
+            add_to_playlist, remove_from_playlist, get_playlist_tracks,
+        )
+        with connect() as conn:
+            pl_id = create_playlist(conn, "test_pl_compact")
+            # Insert tracks
+            ids = []
+            for i in range(3):
+                conn.execute(
+                    "INSERT INTO tracks (channel, channel_title, message_id, title, mime_type, size) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    ("test", "Test", 100000 + i, f"Track {i}", "audio/mpeg", 0),
+                )
+                conn.commit()
+                tid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+                add_to_playlist(conn, pl_id, tid)
+                ids.append(tid)
+            # Remove middle
+            remove_from_playlist(conn, pl_id, ids[1])
+            tracks = get_playlist_tracks(conn, pl_id)
+            assert len(tracks) == 2
+            # Verify no gaps in positions
+            rows = conn.execute(
+                "SELECT position FROM playlist_tracks WHERE playlist_id = ? ORDER BY position",
+                (pl_id,),
+            ).fetchall()
+            positions = [r["position"] for r in rows]
+            assert positions == [0, 1]
+            # Cleanup
+            for tid in ids:
+                conn.execute("DELETE FROM tracks WHERE id = ?", (tid,))
+            conn.commit()
+            pl = get_playlist_by_name(conn, "test_pl_compact")
+            delete_playlist(conn, pl["id"])
+
+    def test_reorder(self) -> None:
+        from tg_music.db import (
+            connect, create_playlist, delete_playlist, get_playlist_by_name,
+            add_to_playlist, reorder_playlist_track, get_playlist_tracks,
+        )
+        with connect() as conn:
+            pl_id = create_playlist(conn, "test_pl_reorder")
+            ids = []
+            for i in range(3):
+                conn.execute(
+                    "INSERT INTO tracks (channel, channel_title, message_id, title, mime_type, size) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    ("test", "Test", 200000 + i, f"Reorder {i}", "audio/mpeg", 0),
+                )
+                conn.commit()
+                tid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+                add_to_playlist(conn, pl_id, tid)
+                ids.append(tid)
+            # Move first to last (pos 0 -> pos 2)
+            ok = reorder_playlist_track(conn, pl_id, ids[0], 2)
+            assert ok is True
+            tracks = get_playlist_tracks(conn, pl_id)
+            assert tracks[0].id == ids[1]
+            assert tracks[1].id == ids[2]
+            assert tracks[2].id == ids[0]
+            # Move nonexistent
+            ok = reorder_playlist_track(conn, pl_id, 999999, 0)
+            assert ok is False
+            # Cleanup
+            for tid in ids:
+                conn.execute("DELETE FROM tracks WHERE id = ?", (tid,))
+            conn.commit()
+            pl = get_playlist_by_name(conn, "test_pl_reorder")
+            delete_playlist(conn, pl["id"])
+
+
 class TestDBFavorites:
     def test_is_favorite_returns_bool(self) -> None:
         from tg_music.db import connect, is_favorite

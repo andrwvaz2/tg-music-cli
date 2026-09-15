@@ -38,6 +38,7 @@ from .db import (
     remove_from_playlist,
     remove_tag,
     rename_playlist,
+    reorder_playlist_track,
     set_ignored,
     tag_track,
     toggle_favorite,
@@ -220,6 +221,14 @@ def build_parser() -> argparse.ArgumentParser:
     pl_show = pl_sub.add_parser("show", help="Show playlist tracks")
     pl_show.add_argument("name", help="Playlist name")
     pl_show.set_defaults(func=cmd_playlist_show)
+    pl_play = pl_sub.add_parser("play", help="Play all tracks in a playlist")
+    pl_play.add_argument("name", help="Playlist name")
+    pl_play.set_defaults(func=cmd_playlist_play)
+    pl_reorder = pl_sub.add_parser("reorder", help="Move a track to a new position")
+    pl_reorder.add_argument("name", help="Playlist name")
+    pl_reorder.add_argument("track_id", type=int, help="Track ID to move")
+    pl_reorder.add_argument("position", type=int, help="New position (1-based)")
+    pl_reorder.set_defaults(func=cmd_playlist_reorder)
     pl.set_defaults(func=cmd_playlist_list)
 
     export = sub.add_parser("export", help="Export a playlist to an m3u file")
@@ -740,6 +749,49 @@ def cmd_playlist_show(args: argparse.Namespace) -> int:
     print(f"Playlist: {args.name} ({len(tracks)} tracks)")
     for i, track in enumerate(tracks, 1):
         print(f"  {i:3d}. {track.id:4d}  {format_duration(track.duration):>5}  {track.display_title}")
+    return 0
+
+
+def cmd_playlist_play(args: argparse.Namespace) -> int:
+    settings = load_settings()
+    with connect() as conn:
+        pl = get_playlist_by_name(conn, args.name)
+        if pl is None:
+            print(f"Playlist '{args.name}' does not exist", file=sys.stderr)
+            return 1
+        tracks = get_playlist_tracks(conn, pl["id"])
+    if not tracks:
+        print(f"Playlist '{args.name}' is empty", file=sys.stderr)
+        return 1
+    print(f"Playing playlist '{args.name}' ({len(tracks)} tracks)")
+    for track in tracks:
+        print(f"\n  ▶ {track.display_title}")
+        try:
+            path = asyncio.run(download_track(track, progress=print_download_progress))
+            print()
+            with connect() as conn:
+                record_play(conn, track.id)
+            play_file(path, volume=settings.volume)
+        except Exception as exc:
+            print(f"  Error: {exc}", file=sys.stderr)
+    return 0
+
+
+def cmd_playlist_reorder(args: argparse.Namespace) -> int:
+    with connect() as conn:
+        pl = get_playlist_by_name(conn, args.name)
+        if pl is None:
+            print(f"Playlist '{args.name}' does not exist", file=sys.stderr)
+            return 1
+        track = get_track(conn, args.track_id)
+        if track is None:
+            print(f"Track {args.track_id} does not exist", file=sys.stderr)
+            return 1
+        ok = reorder_playlist_track(conn, pl["id"], args.track_id, args.position - 1)
+        if not ok:
+            print(f"Track {args.track_id} is not in playlist '{args.name}'", file=sys.stderr)
+            return 1
+    print(f"Moved track {args.track_id} to position {args.position}")
     return 0
 
 

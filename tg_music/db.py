@@ -608,6 +608,68 @@ def remove_from_playlist(conn: sqlite3.Connection, playlist_id: int, track_id: i
             (playlist_id, track_id),
         )
         conn.commit()
+    _compact_playlist_positions(conn, playlist_id)
+
+
+def reorder_playlist_track(conn: sqlite3.Connection, playlist_id: int, track_id: int, new_position: int) -> bool:
+    """Move track to new_position, shifting others. Returns False if track not in playlist."""
+    row = conn.execute(
+        "SELECT position FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?",
+        (playlist_id, track_id),
+    ).fetchone()
+    if row is None:
+        return False
+
+    count = conn.execute(
+        "SELECT COUNT(*) FROM playlist_tracks WHERE playlist_id = ?",
+        (playlist_id,),
+    ).fetchone()[0]
+    new_position = max(0, min(new_position, count - 1))
+
+    old_pos = row["position"]
+    if old_pos == new_position:
+        return True
+
+    with DB_WRITE_LOCK:
+        if old_pos < new_position:
+            conn.execute(
+                """
+                UPDATE playlist_tracks
+                SET position = position - 1
+                WHERE playlist_id = ? AND position > ? AND position <= ?
+                """,
+                (playlist_id, old_pos, new_position),
+            )
+        else:
+            conn.execute(
+                """
+                UPDATE playlist_tracks
+                SET position = position + 1
+                WHERE playlist_id = ? AND position >= ? AND position < ?
+                """,
+                (playlist_id, new_position, old_pos),
+            )
+        conn.execute(
+            "UPDATE playlist_tracks SET position = ? WHERE playlist_id = ? AND track_id = ?",
+            (new_position, playlist_id, track_id),
+        )
+        conn.commit()
+    return True
+
+
+def _compact_playlist_positions(conn: sqlite3.Connection, playlist_id: int) -> None:
+    """Re-number positions to remove gaps after deletion."""
+    rows = conn.execute(
+        "SELECT track_id FROM playlist_tracks WHERE playlist_id = ? ORDER BY position",
+        (playlist_id,),
+    ).fetchall()
+    with DB_WRITE_LOCK:
+        for i, row in enumerate(rows):
+            conn.execute(
+                "UPDATE playlist_tracks SET position = ? WHERE playlist_id = ? AND track_id = ?",
+                (i, playlist_id, row["track_id"]),
+            )
+        conn.commit()
 
 
 def get_playlist_tracks(conn: sqlite3.Connection, playlist_id: int) -> list:
@@ -628,8 +690,10 @@ def get_playlist_tracks(conn: sqlite3.Connection, playlist_id: int) -> list:
             channel_title=row["channel_title"],
             performer=row["performer"],
             title=row["title"],
+            mime_type=row["mime_type"],
             filename=row["filename"],
             duration=row["duration"],
+            size=row["size"],
             date=row["date"],
             local_path=row["local_path"],
             ignored=row["ignored"],

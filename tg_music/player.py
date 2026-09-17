@@ -6,7 +6,10 @@ import shutil
 import socket
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
+
+from .mpv_ipc import MpvIpcClient
 
 
 def ensure_mpv() -> None:
@@ -43,6 +46,11 @@ class BackgroundPlayer:
         self.process: subprocess.Popen | None = None
         self.volume = max(0, min(150, volume))
         self.crossfade = max(0, min(10, crossfade))
+        self._state_lock = threading.Lock()
+        self.position = 0.0
+        self.paused = False
+        self.duration: float | None = None
+        self._ipc = MpvIpcClient(_ipc_path(), self)
 
     def play(self, path: str | Path) -> None:
         ensure_mpv()
@@ -68,8 +76,13 @@ class BackgroundPlayer:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        with self._state_lock:
+            self.position = 0.0
+            self.paused = False
+        self._ipc.start()
 
     def stop(self) -> None:
+        self._ipc.stop()
         if self.process is None:
             return
         if self.process.poll() is None:
@@ -94,6 +107,45 @@ class BackgroundPlayer:
         if self.process is None:
             return None
         return self.process.poll()
+
+    def get_position(self) -> float:
+        with self._state_lock:
+            return self.position
+
+    def is_paused(self) -> bool:
+        with self._state_lock:
+            return self.paused
+
+    def get_duration(self) -> float | None:
+        with self._state_lock:
+            return self.duration
+
+    def _set_position(self, value: float) -> None:
+        with self._state_lock:
+            self.position = value
+
+    def _set_paused(self, value: bool) -> None:
+        with self._state_lock:
+            self.paused = value
+
+    def _set_duration(self, value: float | None) -> None:
+        with self._state_lock:
+            self.duration = value
+
+    def pause(self) -> None:
+        _send_ipc_command(["set_property", "pause", True])
+
+    def resume(self) -> None:
+        _send_ipc_command(["set_property", "pause", False])
+
+    def toggle_pause(self) -> None:
+        _send_ipc_command(["cycle", "pause"])
+
+    def seek(self, delta_seconds: float) -> None:
+        _send_ipc_command(["seek", delta_seconds])
+
+    def seek_to(self, position_seconds: float) -> None:
+        _send_ipc_command(["set_property", "time-pos", max(0.0, position_seconds)])
 
     def set_volume(self, volume: int) -> None:
         self.volume = max(0, min(150, volume))

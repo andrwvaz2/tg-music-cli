@@ -47,6 +47,7 @@ from .db import (
 )
 from .lyrics import fetch_lyrics
 from .models import Channel, Track
+from .mpris import MprisService
 from .player import BackgroundPlayer
 from .shared import fuzzy_match, notify_user
 from .telegram_client import (
@@ -110,6 +111,12 @@ class Tui(RenderMixin, PlayerMixin):
         self.eq_vel: list[float] = [0.0] * 5
         self.cache_line = "Cache: Listo"
         self.dirty = True
+        self.mpris = MprisService(self)
+        self._quit_requested = False
+        self._cleaned = False
+        import atexit
+
+        atexit.register(self._shutdown)
         self.precache_ids: set[int] = set()
         self.downloading_track_id: int | None = None
         self.precache_thread: threading.Thread | None = None
@@ -208,6 +215,7 @@ class Tui(RenderMixin, PlayerMixin):
         self.screen.timeout(self.input_timeout_ms)
         self.reload()
         self.start_watch_thread()
+        self.mpris.start()
         if not self._is_authorized():
             self.stop_watch_thread()
             self.login_modal()
@@ -244,6 +252,11 @@ class Tui(RenderMixin, PlayerMixin):
                             self.manual_stop = False
                             self.dirty = True
 
+                for cmd in self.mpris.drain():
+                    self._dispatch_mpris(cmd)
+                if self._quit_requested:
+                    return
+
                 if self.dirty:
                     try:
                         self.draw()
@@ -271,9 +284,56 @@ class Tui(RenderMixin, PlayerMixin):
                     self.cover_graphics_draw_key = None
                     self.dirty = True
         finally:
-            self.stop_watch_thread()
-            self.player.stop()
+            self._shutdown()
             clear_terminal_images()
+
+    def _dispatch_mpris(self, cmd: tuple) -> None:
+        name = cmd[0]
+        if name == "play":
+            self._mpris_play()
+        elif name == "pause":
+            self.player.pause()
+            self.mpris.notify_state()
+        elif name == "playpause":
+            self.player.toggle_pause()
+            self.mpris.notify_state()
+        elif name == "stop":
+            self.stop_playback()
+        elif name == "next":
+            self.play_next(auto=False)
+        elif name == "prev":
+            self.play_prev()
+        elif name == "seek":
+            self.seek(cmd[1])
+        elif name == "seek_to":
+            self.seek_to(cmd[1])
+        elif name == "quit":
+            self._quit_requested = True
+        self.dirty = True
+
+    def _mpris_play(self) -> None:
+        if self.current_track is None:
+            return
+        if self.player.is_paused():
+            self.player.resume()
+        elif not self.player.is_playing():
+            self.play_track(self.current_track, selected_index=self.selected)
+        self.mpris.notify_state()
+
+    def stop_mpris(self) -> None:
+        if getattr(self, "mpris", None) is not None:
+            self.mpris.stop()
+
+    def _shutdown(self) -> None:
+        if getattr(self, "_cleaned", False):
+            return
+        self._cleaned = True
+        # Orden: MPRIS primero (libera el bus name de inmediato y deja de
+        # referenciar el player), luego el player (mata mpv y el socket IPC),
+        # finalmente el watcher. Idempotente para el registro atexit.
+        self.stop_mpris()
+        self.player.stop()
+        self.stop_watch_thread()
 
     def handle_key(self, key: int) -> bool:
         if key == 409 or key == curses.KEY_MOUSE:
@@ -586,6 +646,7 @@ class Tui(RenderMixin, PlayerMixin):
         save_settings(settings)
         self.status = f"Volume: {self.volume}"
         self.dirty = True
+        self.mpris.notify_state()
 
     def toggle_repeat(self) -> None:
         self.repeat_mode = not self.repeat_mode

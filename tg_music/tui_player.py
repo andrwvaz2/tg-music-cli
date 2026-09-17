@@ -113,6 +113,7 @@ class PlayerMixin:
             self.lyrics_text = ""
             self.draw()
             self.start_precache_after_selection()
+            self.mpris.notify_state()
         except Exception as exc:
             self.status = f"Error: {exc}"
             self.dirty = True
@@ -126,6 +127,46 @@ class PlayerMixin:
         self.play_start_time = None
         self.last_elapsed_seconds = 0
         self.dirty = True
+        self.mpris.notify_state()
+
+    def play_prev(self) -> None:
+        if not self.tracks or self.current_track is None:
+            return
+        # Si llevamos menos de 3s, reinicia la pista actual; si no, retrocede.
+        if self.player.get_position() < 3.0:
+            self.play_track(self.current_track, selected_index=self.selected)
+            return
+        start = self.selected
+        for index, track in enumerate(self.tracks):
+            if track.id == self.current_track.id:
+                start = index
+                break
+        prev_index = start - 1
+        if prev_index < 0:
+            if self.repeat_mode:
+                prev_index = len(self.tracks) - 1
+            else:
+                self.play_track(self.tracks[0], selected_index=0)
+                return
+        self.selected = prev_index
+        self.status = "Previous"
+        self.dirty = True
+        self.play_track(self.tracks[prev_index], selected_index=prev_index)
+
+    def seek(self, delta_seconds: float) -> None:
+        if self.current_track is None:
+            return
+        self.seek_to(self.player.get_position() + delta_seconds)
+
+    def seek_to(self, position_seconds: float) -> None:
+        if self.current_track is None:
+            return
+        pos = max(0.0, position_seconds)
+        self.player.seek_to(pos)
+        self.play_start_time = time.time() - pos
+        self.last_elapsed_seconds = int(pos)
+        self.dirty = True
+        self.mpris.notify_state()
 
     def play_next(self, auto: bool) -> None:
         if not self.tracks:

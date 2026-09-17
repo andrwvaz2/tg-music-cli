@@ -9,6 +9,22 @@ from .config import COVER_CACHE_DIR
 from .models import Track
 
 
+def get_cover_uri(track: Track) -> str | None:
+    """Return a ``file://`` URI for the cached cover art, or None if absent.
+
+    Used for the MPRIS ``mpris:artUrl`` metadata field. The embedded cover is
+    extracted by ``extract_embedded_cover`` into a deterministic path; we also
+    accept any ``{channel}-{message_id}-*cover*`` file already in the cache.
+    """
+    embedded = COVER_CACHE_DIR / f"{track.channel}-{track.message_id}-embedded-cover.jpg"
+    if embedded.exists() and embedded.stat().st_size > 0:
+        return embedded.as_uri()
+    for cover in COVER_CACHE_DIR.glob(f"{track.channel}-{track.message_id}-*cover*"):
+        if cover.is_file() and cover.stat().st_size > 0:
+            return cover.as_uri()
+    return None
+
+
 def render_cover(path: Path | None, max_width: int, max_height: int) -> list[str]:
     if path is None or shutil.which("chafa") is None:
         return []
@@ -16,6 +32,7 @@ def render_cover(path: Path | None, max_width: int, max_height: int) -> list[str
         output = subprocess.check_output(
             [
                 "chafa",
+                "--probe=off",
                 "--format=symbols",
                 "--colors=256",
                 "--color-space=din99d",
@@ -75,6 +92,7 @@ def render_graphics_cover(path: Path | None, max_width: int, max_height: int) ->
         return subprocess.check_output(
             [
                 "chafa",
+                "--probe=off",
                 "--format=kitty",
                 f"--size={max_width}x{max_height}",
                 "--animate=off",

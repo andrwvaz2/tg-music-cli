@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] - 2026-09-16
+
+### Added
+- MPRIS2 D-Bus service support for multimedia keys and desktop player integration (GNOME, KDE, Waybar, etc.).
+- External player control via tools like `playerctl` (play, pause, next, previous, stop, seek, and track metadata).
+- Embedded album art URI export via `mpris:artUrl`.
+- Real-time player state synchronization through `mpv` JSON IPC socket.
+- Graceful degradation for headless or SSH sessions without active D-Bus session bus.
+- Added `dbus-next` dependency.
+
+## [0.4.0] - 2026-09-16
+
+### Added
+- 256-color themes support with built-in palettes (Dark, Light, Dracula, Nord, etc.).
+- In-TUI theme shortcuts: cycle themes (`T`) and interactive theme picker modal (`F2`).
+- Animated visual equalizer next to the NOW PLAYING banner.
+- Slider-based progress and volume bars replacing legacy text meters.
+- Clean track-list status badges (REPRODUCIENDO, Cacheando, Local, Remoto).
+
+### Fixed
+- Fixed duplicate NOW PLAYING banner overlap and lyrics panel overlap.
+
 ## [0.3.1] - 2026-09-15
 
 ### Fixed

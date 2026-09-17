@@ -27,7 +27,9 @@
 * **Embedded Cover Art:** Album art rendering directly in the terminal via `chafa` (high-resolution graphics in Kitty/Ghostty, character-art fallback in other terminals).
 * **Local Database:** Fast SQLite integration for tracking playback history, favorites, playlists, and tags.
 * **Multiple Layouts:** Classic 2-panel view (`C`), 3-panel Split View (`P`), and a compact single-line Mini View (`M`).
+* **Themes & Visual Equalizer:** Multiple 256-color themes (Dark, Dracula, Nord, Light, etc.), interactive theme picker (`F2`), animated visual equalizer, and slider progress bars.
 * **Global Search (FTS5):** Instant full-text search across all indexed tracks and channels (`G`).
+* **MPRIS2 Support:** Full Linux desktop media key integration, lock screen/widget control, and external control via `playerctl` with cover art support.
 * **Blocklist:** Ignore tracks to remove them from local cache and automatically exclude them from future scans and downloads.
 
 ---
@@ -213,32 +215,51 @@ This app uses [Telethon](https://docs.telethon.dev/) (an open-source Telegram cl
 | Key | Action |
 |:---:|---|
 | <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>j</kbd> <kbd>k</kbd> | Move cursor |
+| <kbd>PgUp</kbd> <kbd>PgDn</kbd> | Jump 10 tracks up / down |
+| <kbd>Home</kbd> / <kbd>End</kbd> | Jump to first / last track |
 | <kbd>Enter</kbd> | Open channel / Play selected track |
-| <kbd>Space</kbd> / <kbd>→</kbd> | Expand channel |
+| <kbd>Space</kbd> | Expand or collapse channel / folder |
 | <kbd>Backspace</kbd> / <kbd>←</kbd> | Collapse channel / Return to channels list |
+| <kbd>Tab</kbd> | Switch active panel focus (Split View) |
+| <kbd>n</kbd> / <kbd>→</kbd> | Next track |
+| <kbd>p</kbd> / <kbd>←</kbd> | Previous track |
 | <kbd>s</kbd> | Stop playback |
-| <kbd>n</kbd> | Next track |
+| <kbd>S</kbd> | Toggle shuffle mode |
+| <kbd>R</kbd> | Toggle repeat mode |
 | <kbd>+</kbd> / <kbd>-</kbd> | Adjust volume |
 | <kbd>/</kbd> | Search / filter in active list |
-| <kbd>r</kbd> | Refresh list |
+| <kbd>G</kbd> | Global full-text search (FTS5) across all tracks |
+| <kbd>r</kbd> | Refresh current track list |
+| <kbd>c</kbd> | Open channel browser |
+| <kbd>g</kbd> | Open local music folder |
+| <kbd>a</kbd> | Prompt to add channel or playlist |
+
+### Views, Theming & General
+
+| Key | Action |
+|:---:|---|
 | <kbd>C</kbd> | Toggle Classic View |
 | <kbd>P</kbd> | Toggle Split View |
 | <kbd>M</kbd> | Toggle Mini View |
+| <kbd>L</kbd> | Toggle lyrics display |
+| <kbd>T</kbd> | Cycle color theme (Dark, Light, Dracula, Nord, etc.) |
+| <kbd>F2</kbd> | Open interactive theme picker |
+| <kbd>:</kbd> | Command mode (e.g. `:login` to authenticate) |
+| <kbd>?</kbd> / <kbd>H</kbd> / <kbd>F1</kbd> | Toggle interactive help overlay |
 | <kbd>q</kbd> | Exit player |
 
-### Management, Playlists and Queue
+### Playlists, Queue and Library
 
 | Key | Action |
 |:---:|---|
 | <kbd>e</kbd> | Enqueue selected track |
+| <kbd>E</kbd> | Clear play queue |
 | <kbd>[</kbd> / <kbd>]</kbd> | Reorder selected track in play queue or active playlist |
 | <kbd>f</kbd> | Toggle favorite status |
 | <kbd>1</kbd> | Filter list by favorites |
 | <kbd>t</kbd> | Edit tags for selected track |
 | <kbd>y</kbd> | Show playlists panel |
 | <kbd>Y</kbd> | Add selected track to a playlist (creates one if needed) |
-| <kbd>G</kbd> | Global full-text search (FTS5) across all tracks |
-| <kbd>L</kbd> | Toggle lyrics display |
 | <kbd>m</kbd> | Download all missing tracks in current view |
 | <kbd>u</kbd> | Scan older tracks in selected channel |
 | <kbd>w</kbd> | Check for updates in active channel |
@@ -249,37 +270,79 @@ This app uses [Telethon](https://docs.telethon.dev/) (an open-source Telegram cl
 
 ## CLI Commands
 
-The `tg-music` command allows managing the player directly from the shell:
+The `tg-music` command (also aliased as `tgmusic-cli`) allows controlling the player directly from the shell. Running without subcommands opens the interactive TUI directly.
 
-### Channels
+### Authentication & Setup
 ```bash
-tg-music add-channel <URL_OR_USER> --limit 300   # Add a channel
+tg-music init                                   # Run initial setup wizard (api_id & api_hash)
+tg-music login                                  # Log in to Telegram interactively from CLI
+```
+
+### Channels & Scanning
+```bash
+tg-music add-channel <URL_OR_USER> --limit 300   # Add and index a channel
 tg-music channels                               # List saved channels
 tg-music scan <URL_OR_USER> --limit 300          # Index metadata
 tg-music scan <URL_OR_USER> --cache              # Index and download audio
 ```
 
-### Playback and Downloads
+### Search (FTS5)
+```bash
+tg-music search "track title or artist"          # Instant full-text search
+tg-music search "synthwave" --tag electronic     # Search filtered by tag
+```
+
+### Playback & Downloads
 ```bash
 tg-music play <ID>                              # Play a specific track
 tg-music play-latest <URL_OR_USER>               # Play latest track in a channel
+tg-music play-folder /path/to/music --shuffle    # Play local directory with shuffle
+tg-music random --limit 5                        # Play random tracks from library
 tg-music cache <URL_OR_USER> --workers 2          # Download missing tracks to cache
 ```
 
-### Tags Management
+### Playlists
+```bash
+tg-music playlist list                          # List all custom playlists
+tg-music playlist create "Favorites 2026"        # Create a new playlist
+tg-music playlist add "Favorites 2026" 12 15 22  # Add track IDs to playlist
+tg-music playlist play "Favorites 2026"          # Play an entire playlist
+tg-music playlist reorder "Favorites 2026" 15 1  # Move track ID 15 to position 1
+tg-music playlist remove "Favorites 2026" 12     # Remove track ID from playlist
+```
+
+### Tags & Favorites
 ```bash
 tg-music tag add <ID> <tag>                     # Add a tag to a track
 tg-music tag remove <ID> <tag>                  # Remove a tag
 tg-music tag list                               # List all tags in the system
 tg-music tag show <ID>                          # Show tags of a track
+tg-music favorite <ID>                          # Toggle favorite status
 ```
 
-### Ignoring & Favorites
+### Settings & Theming
 ```bash
-tg-music favorite <ID>                          # Toggle favorite status
+tg-music settings show                          # Show current player settings
+tg-music settings set theme dracula             # Set theme (dark, light, dracula, nord, etc.)
+tg-music settings set volume 85                 # Set default volume (0-150)
+```
+
+### Desktop Media Keys & MPRIS2
+When `tg-music` is playing, it registers an MPRIS2 D-Bus service (`org.mpris.MediaPlayer2.tgmusic`), allowing integration with Linux desktop media controls, lock screens, widgets, and `playerctl`:
+```bash
+playerctl play-pause                            # Play/Pause active playback
+playerctl next                                  # Skip to next track
+playerctl previous                              # Return to previous track
+playerctl metadata                              # Display currently playing title, artist, and cover art
+```
+
+### Maintenance & Ignoring
+```bash
 tg-music ignore <ID>                            # Ignore track (deletes local file)
 tg-music unignore <ID>                          # Stop ignoring track
 tg-music ignored                                # List ignored tracks
+tg-music cleanup --max-age 30                   # Clean cached files older than 30 days
+tg-music status                                 # Display library summary & disk usage
 ```
 
 ---

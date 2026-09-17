@@ -27,7 +27,9 @@
 * **Carátulas integradas:** Renderizado de portadas directamente en la terminal mediante `chafa` (gráficos de alta resolución en Kitty/Ghostty y compatibilidad en modo texto/ASCII en cualquier otra terminal).
 * **Base de datos local:** Integración con SQLite rápido para historial de reproducción, favoritos, listas y etiquetas (tags).
 * **Múltiples vistas de interfaz (TUI):** Vista Clásica de 2 paneles (`C`), Vista Dividida de 3 paneles (`P`) y Vista Mini compacta (`M`).
+* **Temas y Ecualizador Visual:** Múltiples paletas de 256 colores (Oscuro, Claro, Dracula, Nord, etc.), selector interactivo de temas (`F2`), ecualizador animado y barras de progreso tipo slider.
 * **Búsqueda global (FTS5):** Búsqueda de texto completo instantánea en todas las pistas y canales indexados (`G`).
+* **Soporte MPRIS2:** Integración con teclas multimedia de escritorio Linux, pantalla de bloqueo y control externo mediante `playerctl` con portada de álbum.
 * **Lista de exclusión (Blocklist):** Ignora canciones para eliminarlas de la caché local y omitirlas automáticamente en futuros escaneos y descargas.
 
 ---
@@ -213,17 +215,37 @@ Esta aplicación utiliza [Telethon](https://docs.telethon.dev/) (una librería c
 | Tecla | Acción |
 |:---:|---|
 | <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>j</kbd> <kbd>k</kbd> | Mover el cursor |
+| <kbd>RePág</kbd> <kbd>AvPág</kbd> | Saltar 10 pistas arriba / abajo |
+| <kbd>Inicio</kbd> / <kbd>Fin</kbd> | Ir a la primera / última pista |
 | <kbd>Enter</kbd> | Abrir canal seleccionado / Reproducir pista |
-| <kbd>Espacio</kbd> / <kbd>→</kbd> | Desplegar canal |
+| <kbd>Espacio</kbd> | Desplegar o plegar canal / carpeta |
 | <kbd>Backspace</kbd> / <kbd>←</kbd> | Plegar canal / Regresar a la lista de canales |
+| <kbd>Tab</kbd> | Alternar foco entre paneles (Vista Dividida) |
+| <kbd>n</kbd> / <kbd>→</kbd> | Siguiente pista |
+| <kbd>p</kbd> / <kbd>←</kbd> | Pista anterior |
 | <kbd>s</kbd> | Detener reproducción |
-| <kbd>n</kbd> | Siguiente pista |
+| <kbd>S</kbd> | Alternar modo aleatorio (*shuffle*) |
+| <kbd>R</kbd> | Alternar modo de repetición (*repeat*) |
 | <kbd>+</kbd> / <kbd>-</kbd> | Subir / Bajar volumen |
 | <kbd>/</kbd> | Buscar / filtrar en la lista activa |
-| <kbd>r</kbd> | Recargar lista |
+| <kbd>G</kbd> | Búsqueda global de texto completo (FTS5) en toda la biblioteca |
+| <kbd>r</kbd> | Recargar lista de pistas |
+| <kbd>c</kbd> | Abrir explorador de canales |
+| <kbd>g</kbd> | Abrir carpeta de música local |
+| <kbd>a</kbd> | Prompt para añadir canal o lista de reproducción |
+
+### Vistas, Temas y General
+
+| Tecla | Acción |
+|:---:|---|
 | <kbd>C</kbd> | Alternar Vista Clásica |
 | <kbd>P</kbd> | Alternar Vista Dividida |
 | <kbd>M</kbd> | Alternar Vista Mini |
+| <kbd>L</kbd> | Mostrar / Ocultar panel de letras de canciones |
+| <kbd>T</kbd> | Rotar tema de color (Dark, Light, Dracula, Nord, etc.) |
+| <kbd>F2</kbd> | Abrir selector interactivo de temas |
+| <kbd>:</kbd> | Modo comando tipo Vim (ej. `:login` para autenticar) |
+| <kbd>?</kbd> / <kbd>H</kbd> / <kbd>F1</kbd> | Abrir / cerrar panel interactivo de ayuda |
 | <kbd>q</kbd> | Salir del reproductor |
 
 ### Gestión, Listas y Cola
@@ -231,14 +253,13 @@ Esta aplicación utiliza [Telethon](https://docs.telethon.dev/) (una librería c
 | Tecla | Acción |
 |:---:|---|
 | <kbd>e</kbd> | Añadir pista a la cola de reproducción |
+| <kbd>E</kbd> | Vaciar cola de reproducción |
 | <kbd>[</kbd> / <kbd>]</kbd> | Reordenar pista dentro de la cola o lista de reproducción activa |
 | <kbd>f</kbd> | Marcar / Desmarcar como favorito |
 | <kbd>1</kbd> | Filtrar lista por canciones favoritas |
 | <kbd>t</kbd> | Editar etiquetas (tags) de la pista seleccionada |
 | <kbd>y</kbd> | Mostrar panel de listas de reproducción (playlists) |
 | <kbd>Y</kbd> | Añadir pista a una playlist (la crea si no existe) |
-| <kbd>G</kbd> | Búsqueda global de texto completo (FTS5) en toda la biblioteca |
-| <kbd>L</kbd> | Mostrar / Ocultar panel de letras de canciones |
 | <kbd>m</kbd> | Descargar todas las pistas faltantes en la vista actual |
 | <kbd>u</kbd> | Escanear pistas más antiguas en el canal seleccionado |
 | <kbd>w</kbd> | Comprobar nuevas publicaciones en el canal activo |
@@ -249,37 +270,79 @@ Esta aplicación utiliza [Telethon](https://docs.telethon.dev/) (una librería c
 
 ## Comandos de la CLI
 
-El comando `tg-music` permite gestionar el reproductor directamente desde la terminal:
+El comando `tg-music` (también disponible con el alias `tgmusic-cli`) permite controlar el reproductor directamente desde la terminal. Al ejecutarlo sin argumentos, abre la interfaz TUI directamente.
 
-### Canales
+### Autenticación y Configuración
 ```bash
-tg-music add-channel <URL_O_USUARIO> --limit 300   # Añadir un canal
+tg-music init                                     # Asistente de configuración inicial (api_id y api_hash)
+tg-music login                                    # Iniciar sesión de Telegram interactivamente desde la consola
+```
+
+### Canales y Escaneo
+```bash
+tg-music add-channel <URL_O_USUARIO> --limit 300   # Añadir e indexar un canal
 tg-music channels                                 # Listar canales guardados
 tg-music scan <URL_O_USUARIO> --limit 300         # Indexar metadatos
 tg-music scan <URL_O_USUARIO> --cache             # Indexar y descargar audios
 ```
 
+### Búsqueda Global (FTS5)
+```bash
+tg-music search "título o artista"                # Búsqueda instantánea de texto completo
+tg-music search "synthwave" --tag electronic       # Búsqueda filtrada por etiqueta
+```
+
 ### Reproducción y Descargas
 ```bash
-tg-music play <ID>                                # Reproducir una pista específica
+tg-music play <ID>                                # Reproducir una pista específica por ID
 tg-music play-latest <URL_O_USUARIO>              # Reproducir la última pista de un canal
+tg-music play-folder /ruta/musica --shuffle       # Reproducir carpeta local en modo aleatorio
+tg-music random --limit 5                         # Reproducir pistas aleatorias de la biblioteca
 tg-music cache <URL_O_USUARIO> --workers 2        # Descargar pistas faltantes a la caché
 ```
 
-### Gestión de Etiquetas (Tags)
+### Listas de Reproducción (Playlists)
+```bash
+tg-music playlist list                            # Listar todas las playlists personalizadas
+tg-music playlist create "Favoritas 2026"         # Crear una nueva lista
+tg-music playlist add "Favoritas 2026" 12 15 22   # Añadir canciones por ID
+tg-music playlist play "Favoritas 2026"           # Reproducir una playlist completa
+tg-music playlist reorder "Favoritas 2026" 15 1   # Mover la pista 15 a la posición 1
+tg-music playlist remove "Favoritas 2026" 12      # Eliminar una pista de la playlist
+```
+
+### Etiquetas y Favoritos
 ```bash
 tg-music tag add <ID> <etiqueta>                  # Añadir etiqueta a una pista
 tg-music tag remove <ID> <etiqueta>               # Quitar etiqueta de una pista
 tg-music tag list                                 # Listar todas las etiquetas del sistema
 tg-music tag show <ID>                            # Ver etiquetas de una pista
+tg-music favorite <ID>                            # Alternar estado de favorito
 ```
 
-### Exclusiones y Favoritos
+### Configuración y Temas
 ```bash
-tg-music favorite <ID>                            # Alternar estado de favorito
+tg-music settings show                            # Ver configuración actual
+tg-music settings set theme dracula               # Cambiar tema (dark, light, dracula, nord, etc.)
+tg-music settings set volume 85                   # Cambiar volumen por defecto (0-150)
+```
+
+### Teclas Multimedia de Escritorio y MPRIS2
+Al reproducir, `tg-music` registra un servicio D-Bus MPRIS2 (`org.mpris.MediaPlayer2.tgmusic`) permitiendo integración nativa con los controles multimedia de Linux, widgets de barra (Waybar/Polybar) y `playerctl`:
+```bash
+playerctl play-pause                              # Alternar reproducción/pausa
+playerctl next                                    # Pasar a la siguiente canción
+playerctl previous                                # Regresar a la canción anterior
+playerctl metadata                                # Ver metadatos, artista, título y URL de carátula
+```
+
+### Mantenimiento y Exclusiones
+```bash
 tg-music ignore <ID>                              # Ignorar pista (elimina el archivo local)
 tg-music unignore <ID>                            # Dejar de ignorar una pista
 tg-music ignored                                  # Listar pistas ignoradas
+tg-music cleanup --max-age 30                     # Limpiar caché de archivos de más de 30 días
+tg-music status                                   # Ver estado general de la biblioteca y almacenamiento
 ```
 
 ---

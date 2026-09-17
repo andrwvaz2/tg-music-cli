@@ -82,6 +82,9 @@ def build_parser() -> argparse.ArgumentParser:
     init = sub.add_parser("init", help="Configure Telegram api_id and api_hash")
     init.set_defaults(func=cmd_init)
 
+    doctor = sub.add_parser("doctor", help="Check system dependencies and configuration")
+    doctor.set_defaults(func=cmd_doctor)
+
     login = sub.add_parser("login", help="Log in to Telegram (interactive prompt)")
     login.set_defaults(func=cmd_login)
 
@@ -299,6 +302,12 @@ def cmd_init(_args: argparse.Namespace) -> int:
     print(f"\nConfig saved to {CONFIG_FILE}")
     print("Siguiente paso: tg-music scan https://t.me/Christian_Electronic --limit 300")
     return 0
+
+
+def cmd_doctor(_args: argparse.Namespace) -> int:
+    from .doctor import run_doctor
+
+    return run_doctor()
 
 
 def cmd_login(_args: argparse.Namespace) -> int:

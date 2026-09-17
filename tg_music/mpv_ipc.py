@@ -48,6 +48,8 @@ class MpvIpcClient:
                 pass
 
     def _connect_with_retry(self) -> socket.socket | None:
+        if not hasattr(socket, "AF_UNIX"):
+            return None
         deadline = time.time() + 2.0
         while not self._stop.is_set():
             if os.path.exists(self._socket_path):

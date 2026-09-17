@@ -3,10 +3,52 @@ import queue
 import threading
 from typing import Any
 
-from dbus_next import BusType, RequestNameReply, Variant
-from dbus_next.aio import MessageBus
-from dbus_next.constants import PropertyAccess
-from dbus_next.service import ServiceInterface, dbus_property, method, signal
+try:
+    from dbus_next import BusType, RequestNameReply, Variant
+    from dbus_next.aio import MessageBus
+    from dbus_next.constants import PropertyAccess
+    from dbus_next.service import ServiceInterface, dbus_property, method, signal
+
+    HAS_DBUS = True
+except ImportError:
+    HAS_DBUS = False
+
+    class ServiceInterface:  # type: ignore
+        def __init__(self, name: str = "") -> None:
+            pass
+
+    def dbus_property(**kwargs):  # type: ignore
+        def dec(fn):
+            return fn
+
+        return dec
+
+    def method(**kwargs):  # type: ignore
+        def dec(fn):
+            return fn
+
+        return dec
+
+    def signal(**kwargs):  # type: ignore
+        def dec(fn):
+            return fn
+
+        return dec
+
+    class PropertyAccess:  # type: ignore
+        READ = 1
+        WRITE = 2
+        READWRITE = 3
+
+    class BusType:  # type: ignore
+        SESSION = 1
+
+    class RequestNameReply:  # type: ignore
+        PRIMARY_OWNER = 1
+
+    class Variant:  # type: ignore
+        def __init__(self, sig: str, val: Any) -> None:
+            self.value = val
 
 from .cover import get_cover_uri
 from .models import Track
@@ -208,6 +250,10 @@ class MprisService:
         self._iface = PlayerInterface(self)
 
     def start(self) -> None:
+        if not HAS_DBUS:
+            self.available = False
+            self.status_message = "MPRIS: no disponible (dbus no disponible)"
+            return
         if self._thread and self._thread.is_alive():
             return
         self._stop_event.clear()

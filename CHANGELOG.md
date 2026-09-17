@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.1] - 2026-09-17
+
+### Added
+- Native Windows support via conditional `windows-curses` dependency.
+- `tg-music doctor` diagnostic command to check system dependencies (`mpv`, `chafa`, `playerctl`), credentials, and paths.
+- Helpful platform-aware installation hints (winget, apt, pacman, brew) when `mpv` is missing.
+- Defensive fallback and guards for D-Bus and Unix domain sockets on non-Linux platforms.
+
 ## [0.5.0] - 2026-09-16
 
 ### Added

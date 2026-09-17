@@ -12,9 +12,25 @@ from pathlib import Path
 from .mpv_ipc import MpvIpcClient
 
 
+def get_mpv_install_hint() -> str:
+    import sys
+
+    if sys.platform == "win32":
+        return "winget install mpv.mpv  (o scoop install mpv)"
+    elif sys.platform == "darwin":
+        return "brew install mpv"
+    else:
+        return "sudo apt install mpv  (o sudo pacman -S mpv / sudo dnf install mpv)"
+
+
 def ensure_mpv() -> None:
     if shutil.which("mpv") is None:
-        raise RuntimeError("No encuentro mpv en PATH. Instala mpv para reproducir audio.")
+        hint = get_mpv_install_hint()
+        raise RuntimeError(
+            f"No encuentro 'mpv' en el sistema. 'tg-music' requiere mpv para reproducir audio.\n"
+            f"Instálalo con: {hint}\n"
+            f"Para comprobar tu sistema ejecuta: tg-music doctor"
+        )
 
 
 def play_file(path: str | Path, volume: int = 100) -> None:
@@ -27,6 +43,8 @@ def _ipc_path() -> str:
 
 
 def _send_ipc_command(command: list) -> None:
+    if not hasattr(socket, "AF_UNIX"):
+        return
     sock_path = _ipc_path()
     if not os.path.exists(sock_path):
         return

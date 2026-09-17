@@ -118,14 +118,14 @@ brew install mpv chafa
 ```
 
 #### Windows
-* **Vía WSL (Recomendado):** Abre la terminal de WSL (ej. Ubuntu) y ejecuta los comandos de instalación de **Linux**.
-* **Windows Nativo:** Instala dependencias con [Scoop](https://scoop.sh/) o [Chocolatey](https://chocolatey.org/):
+* **Windows Nativo (PowerShell):**
+  Instala `mpv` con el gestor oficial de Windows (`winget`):
   ```powershell
-  # Con Scoop
-  scoop install mpv chafa
-  # Con Chocolatey
-  choco install mpv chafa
+  winget install mpv.mpv
+  winget install chafa   # Opcional, para carátulas en terminal
   ```
+  *(Gestores alternativos: `scoop install mpv chafa` o `choco install mpv chafa`)*.
+* **Vía WSL (Recomendado para la mejor experiencia gráfica en terminal):** Abre la terminal de WSL (ej. Ubuntu) y ejecuta los comandos de instalación de **Linux**.
 
 ---
 
@@ -276,6 +276,7 @@ El comando `tg-music` (también disponible con el alias `tgmusic-cli`) permite c
 
 ### Autenticación y Configuración
 ```bash
+tg-music doctor                                   # Comprobar dependencias del sistema, herramientas y rutas
 tg-music init                                     # Asistente de configuración inicial (api_id y api_hash)
 tg-music login                                    # Iniciar sesión de Telegram interactivamente desde la consola
 ```

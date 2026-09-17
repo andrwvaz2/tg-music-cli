@@ -72,7 +72,9 @@ https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 |------------|---------|:---------:|---------|
 | Python | >= 3.11 | Yes | Runtime environment |
 | [mpv](https://mpv.io/) | Any recent | Yes | Audio playback engine |
+| [dbus-next](https://github.com/altdesktop/python-dbus-next) | >= 0.2.3 | Yes (Auto) | MPRIS2 desktop media key & D-Bus integration |
 | [chafa](https://hpjansson.org/chafa/) | Any recent | No | Terminal cover art rendering |
+| [playerctl](https://github.com/altdesktop/playerctl) | Any recent | No | CLI utility for desktop media controls |
 | [uv](https://docs.astral.sh/uv/) | Any recent | Recommended | Fast package and environment manager |
 
 * **Linux:** Fully supported (native experience).
@@ -85,29 +87,29 @@ https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 
 ### 1. Install System Dependencies
 
-This project relies on `mpv` for audio playback and `chafa` (optional) for terminal cover art rendering.
+This project relies on `mpv` for audio playback, `chafa` (optional) for terminal cover art rendering, and `playerctl` (optional) for desktop media key controls. Python dependencies (such as `dbus-next`, `telethon`, and `mutagen`) are handled automatically during installation.
 
 #### Linux
 
 ##### Debian / Ubuntu / Mint
 ```bash
-sudo apt update && sudo apt install -y mpv chafa
+sudo apt update && sudo apt install -y mpv chafa playerctl
 ```
 
 ##### Arch Linux / Manjaro
 ```bash
-sudo pacman -S mpv chafa
+sudo pacman -S mpv chafa playerctl
 ```
 
 ##### Fedora
 ```bash
-sudo dnf install mpv chafa
+sudo dnf install mpv chafa playerctl
 ```
 
 ##### NixOS
-Add `mpv` and `chafa` to `environment.systemPackages` or run them in a shell:
+Add `mpv`, `chafa`, and `playerctl` to `environment.systemPackages` or run them in a shell:
 ```bash
-nix-shell -p mpv chafa
+nix-shell -p mpv chafa playerctl
 ```
 
 #### macOS

@@ -72,7 +72,9 @@ https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 |-------------|---------|:-------------:|-----------|
 | Python | >= 3.11 | Sí | Entorno de ejecución |
 | [mpv](https://mpv.io/) | Reciente | Sí | Motor de reproducción de audio |
+| [dbus-next](https://github.com/altdesktop/python-dbus-next) | >= 0.2.3 | Sí (Auto) | Integración D-Bus y teclas multimedia MPRIS2 |
 | [chafa](https://hpjansson.org/chafa/) | Reciente | No | Renderizado de portadas en terminal |
+| [playerctl](https://github.com/altdesktop/playerctl) | Reciente | No | Utilidad CLI para control multimedia de escritorio |
 | [uv](https://docs.astral.sh/uv/) | Reciente | Recomendado | Gestor rápido de paquetes y entornos |
 
 * **Linux:** Soporte nativo completo.
@@ -85,29 +87,29 @@ https://github.com/user-attachments/assets/fdd5f457-2e5a-4c84-bf5b-d8f0cad070d7
 
 ### 1. Instalar dependencias del sistema
 
-Este proyecto utiliza `mpv` para la reproducción de audio y `chafa` (opcional) para renderizar portadas en la terminal.
+Este proyecto utiliza `mpv` para la reproducción de audio, `chafa` (opcional) para renderizar portadas en la terminal y `playerctl` (opcional) para control multimedia desde el escritorio. Las dependencias de Python (como `dbus-next`, `telethon` y `mutagen`) se instalan automáticamente.
 
 #### Linux
 
 ##### Debian / Ubuntu / Mint
 ```bash
-sudo apt update && sudo apt install -y mpv chafa
+sudo apt update && sudo apt install -y mpv chafa playerctl
 ```
 
 ##### Arch Linux / Manjaro
 ```bash
-sudo pacman -S mpv chafa
+sudo pacman -S mpv chafa playerctl
 ```
 
 ##### Fedora
 ```bash
-sudo dnf install mpv chafa
+sudo dnf install mpv chafa playerctl
 ```
 
 ##### NixOS
-Agrega `mpv` y `chafa` a `environment.systemPackages` o ejecútalos en un shell:
+Agrega `mpv`, `chafa` y `playerctl` a `environment.systemPackages` o ejecútalos en un shell:
 ```bash
-nix-shell -p mpv chafa
+nix-shell -p mpv chafa playerctl
 ```
 
 #### macOS

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import os
 import shutil
 import sys
-from pathlib import Path
 
 from .config import CACHE_DIR, CONFIG_FILE, DATA_DIR, load_config
 from .shared import format_bytes

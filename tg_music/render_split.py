@@ -23,30 +23,37 @@ class RenderSplitMixin:
         body_h = max(height - body_top - 2, 1)
         if p3_w <= 5:
             return False
+        now_playing = f"\u266a NOW PLAYING  {self.eq_string()}  {self.current_track.title}"
+        self.screen.addnstr(
+            body_top,
+            p3_start + 1,
+            now_playing[: max(p3_w - 2, 0)],
+            max(p3_w - 2, 0),
+            self.color_attr(self.color_success, -1) | curses.A_BOLD,
+        )
 
         row = body_top + 1
         if self.current_track.performer:
             row += 1
-        if row >= body_top + body_h:
-            return False
-
-        elapsed = int(time.time() - self.play_start_time)
-        duration = self.current_track.duration or 0
-        elapsed = min(elapsed, duration) if duration > 0 else elapsed
-        elapsed_str = format_duration(elapsed)
-        dur_str = format_duration(duration)
-        bar_w = max(p3_w - len(elapsed_str) - len(dur_str) - 4, 6)
-        bar = self._make_progress_bar(elapsed, duration, bar_w)
-        text = f"{elapsed_str} {bar} {dur_str}"
-        attr = self.color_attr(self.color_success, -1)
-        self.screen.addnstr(row, p3_start + 1, " " * max(p3_w - 2, 0), max(p3_w - 2, 0), attr)
-        self.screen.addnstr(row, p3_start + 1, text[: max(p3_w - 2, 0)], max(p3_w - 2, 0), attr)
+        if row < body_top + body_h:
+            elapsed = int(time.time() - self.play_start_time)
+            duration = self.current_track.duration or 0
+            elapsed = min(elapsed, duration) if duration > 0 else elapsed
+            elapsed_str = format_duration(elapsed)
+            dur_str = format_duration(duration)
+            bar_w = max(p3_w - len(elapsed_str) - len(dur_str) - 4, 6)
+            bar = self._make_slider_bar(elapsed, duration, bar_w)
+            text = f"{elapsed_str} {bar} {dur_str}"
+            attr = self.color_attr(self.color_success, -1)
+            self.screen.addnstr(row, p3_start + 1, " " * max(p3_w - 2, 0), max(p3_w - 2, 0), attr)
+            self.screen.addnstr(row, p3_start + 1, text[: max(p3_w - 2, 0)], max(p3_w - 2, 0), attr)
         self.screen.refresh()
         return True
 
     def draw_split(self) -> None:
         self.screen.erase()
         self.cover_graphics_pos = None
+        self.cover_graphics_draw_key = None
         height, width = self.screen.getmaxyx()
 
         hdr_bg = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
@@ -190,10 +197,11 @@ class RenderSplitMixin:
             self.screen.addnstr(row, x + 1, "No playing"[: max(width - 2, 0)], max(width - 2, 0), curses.A_DIM)
             return
 
+        now_playing = f"\u266a NOW PLAYING  {self.eq_string()}  {self.current_track.title}"
         self.screen.addnstr(
             row,
             x + 1,
-            self.current_track.title[: max(width - 2, 0)],
+            now_playing[: max(width - 2, 0)],
             max(width - 2, 0),
             self.color_attr(self.color_success, -1) | curses.A_BOLD,
         )
@@ -214,7 +222,7 @@ class RenderSplitMixin:
             elapsed_str = format_duration(elapsed)
             dur_str = format_duration(duration)
             bar_w = max(width - len(elapsed_str) - len(dur_str) - 4, 6)
-            bar = self._make_progress_bar(elapsed, duration, bar_w)
+            bar = self._make_slider_bar(elapsed, duration, bar_w)
             self.screen.addnstr(
                 row,
                 x + 1,

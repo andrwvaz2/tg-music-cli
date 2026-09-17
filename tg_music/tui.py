@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import curses
 import os
+import random
 import subprocess
 import threading
 import time
@@ -105,6 +106,8 @@ class Tui(RenderMixin, PlayerMixin):
         self.cover_graphics_draw_key: tuple[str, tuple[int, int], tuple[int, int]] | None = None
         self.cover_render_key: tuple[str, int, int, bool] | None = None
         self.color_pairs: dict[tuple[int, int], int] = {}
+        self.eq_levels: list[float] = [0.35, 0.6, 0.45, 0.7, 0.5]
+        self.eq_vel: list[float] = [0.0] * 5
         self.cache_line = "Cache: Listo"
         self.dirty = True
         self.precache_ids: set[int] = set()
@@ -164,6 +167,37 @@ class Tui(RenderMixin, PlayerMixin):
         settings = load_settings()
         return get_theme(settings.theme)
 
+    def update_eq(self) -> None:
+        if not getattr(self, "eq_levels", None):
+            return
+        if self.player.is_playing():
+            for i in range(len(self.eq_levels)):
+                vel = self.eq_vel[i] + random.uniform(-0.22, 0.22)
+                vel = max(-0.18, min(0.18, vel))
+                self.eq_vel[i] = vel
+                nxt = self.eq_levels[i] + vel
+                if nxt < 0.12:
+                    nxt = 0.12
+                    self.eq_vel[i] = abs(self.eq_vel[i])
+                elif nxt > 1.0:
+                    nxt = 1.0
+                    self.eq_vel[i] = -abs(self.eq_vel[i])
+                self.eq_levels[i] = nxt
+        else:
+            for i in range(len(self.eq_levels)):
+                self.eq_levels[i] += (0.18 - self.eq_levels[i]) * 0.25
+                self.eq_vel[i] = 0.0
+
+    def eq_string(self, n: int = 5) -> str:
+        blocks = "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588"
+        out = []
+        for i in range(n):
+            level = self.eq_levels[i] if i < len(self.eq_levels) else 0.18
+            idx = int(round(level * 7))
+            idx = max(0, min(7, idx))
+            out.append(blocks[idx])
+        return "".join(out)
+
     def run(self) -> None:
         curses.curs_set(0)
         try:
@@ -194,12 +228,12 @@ class Tui(RenderMixin, PlayerMixin):
 
                 if self.play_start_time is not None:
                     if self.player.is_playing():
+                        self.update_eq()
                         elapsed = int(time.time() - self.play_start_time)
-                        if elapsed != self.last_elapsed_seconds:
-                            self.last_elapsed_seconds = elapsed
-                            if not self.dirty and self.draw_playback_tick():
-                                continue
-                            self.dirty = True
+                        if not self.draw_playback_tick():
+                            if elapsed != self.last_elapsed_seconds:
+                                self.dirty = True
+                        self.last_elapsed_seconds = elapsed
                     else:
                         returncode = self.player.returncode()
                         self.play_start_time = None

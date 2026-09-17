@@ -35,57 +35,62 @@ class RenderPanelsMixin:
             _cover_width, cover_height = self.cover_box_size(right_width, height)
             cover_top = max(top + 2, top + height - cover_height - 1)
 
-        row += 1  # NOW PLAYING heading
-        for _line in wrap(self.current_track.display_title, right_width - 2):
-            if cover_top is not None and row >= cover_top:
-                return False
-            row += 1
-
-        with connect() as conn:
-            fav = is_favorite(conn, self.current_track.id)
-            tags = get_track_tags(conn, self.current_track.id)
+        self.add(
+            row,
+            right_x + 1,
+            self._now_playing_header(right_width - 2),
+            self.color_attr(self.color_primary, -1) | curses.A_BOLD,
+        )
+        row += 1
 
         info_items = [
             ("Channel", self.current_track.channel_title),
             ("Duration", format_duration(self.current_track.duration)),
             ("Cache", "Ready" if self.current_track.local_path else "Remote"),
             ("Queue", str(len(self.play_queue))),
-            ("Favorite", "Yes" if fav else "No"),
-            ("Volume", f"{self.volume}%"),
+            ("Favorite", "Yes" if self.current_track.id in self.favorite_ids else "No"),
+            ("Volume", f"{self.volume}% [{self._make_volume_meter(self.volume)}]"),
             ("Repeat", "On" if self.repeat_mode else "Off"),
             ("Shuffle", "On" if self.shuffle_mode else "Off"),
         ]
-        if tags:
-            info_items.append(("Tags", ", ".join(tags)))
         for label, val in info_items:
             if cover_top is not None and row >= cover_top:
-                return False
+                break
             val_width = max(right_width - len(f"{label}: ") - 2, 5)
             for _line in wrap(val, val_width):
                 if cover_top is not None and row >= cover_top:
-                    return False
+                    break
                 row += 1
 
-        if row >= top + height - 1 or (cover_top is not None and row >= cover_top):
-            return False
-        row += 1  # Progress heading
-        if row >= top + height - 1 or (cover_top is not None and row >= cover_top):
-            return False
+        if row < top + height - 1 and (cover_top is None or row < cover_top):
+            row += 1  # Progress heading
+            if row < top + height - 1 and (cover_top is None or row < cover_top):
+                elapsed = int(time.time() - self.play_start_time)
+                duration = self.current_track.duration or 0
+                if duration > 0:
+                    elapsed = min(elapsed, duration)
+                elapsed_str = format_duration(elapsed)
+                duration_str = format_duration(duration)
+                bar_width = max(right_width - len(elapsed_str) - len(duration_str) - 6, 8)
+                bar = self._make_slider_bar(elapsed, duration, bar_width)
+                timeline_text = f" {elapsed_str} {bar} {duration_str}"
+                attr = self.color_attr(self.color_success, -1)
+                n = max(right_width - 2, 0)
+                self.screen.addnstr(row, right_x + 1, " " * n, n, attr)
+                self.screen.addnstr(row, right_x + 1, timeline_text[:n], n, attr)
 
-        elapsed = int(time.time() - self.play_start_time)
-        duration = self.current_track.duration or 0
-        if duration > 0:
-            elapsed = min(elapsed, duration)
-        elapsed_str = format_duration(elapsed)
-        duration_str = format_duration(duration)
-        bar_width = max(right_width - len(elapsed_str) - len(duration_str) - 6, 8)
-        bar = self._make_progress_bar(elapsed, duration, bar_width)
-        timeline_text = f" {elapsed_str} {bar} {duration_str}"
-        attr = self.color_attr(self.color_success, -1)
-        self.screen.addnstr(row, right_x + 1, " " * max(right_width - 2, 0), max(right_width - 2, 0), attr)
-        self.screen.addnstr(row, right_x + 1, timeline_text[: max(right_width - 2, 0)], max(right_width - 2, 0), attr)
         self.screen.refresh()
         return True
+
+    def _now_playing_header(self, content_width: int) -> str:
+        """Single-line 'NOW PLAYING' header combining the equalizer and the track title."""
+        eq = self.eq_string()
+        prefix = f"NOW PLAYING  {eq}  "
+        avail = max(content_width - len(prefix), 0)
+        title = self.current_track.display_title if self.current_track is not None else ""
+        if len(title) > avail > 1:
+            title = title[: avail - 1] + "\u2026"
+        return (prefix + title)[: max(content_width, 0)]
 
     def draw(self) -> None:
         if self.mini_mode:
@@ -99,6 +104,7 @@ class RenderPanelsMixin:
             return
         self.screen.erase()
         self.cover_graphics_pos = None
+        self.cover_graphics_draw_key = None
         height, width = self.screen.getmaxyx()
         if not self.help_visible and self.current_track is not None and self.cover_path is not None:
             self.refresh_cover_art(height, width)
@@ -302,13 +308,13 @@ class RenderPanelsMixin:
             fav_mark = "\u2665" if track.id in self.favorite_ids else " "
 
             if is_playing:
-                status_label = "[Playing]"
+                status_label = "\u25b6 REPRODUCIENDO"
             elif is_caching:
-                status_label = "[Caching]"
+                status_label = "\u21bb Cacheando"
             elif is_cached:
-                status_label = "[Cached]"
+                status_label = "\u25cf Local"
             else:
-                status_label = "[Remote]"
+                status_label = "\u2601 Remoto"
 
             line = (
                 f"{marker} {playing}{cache}{queue_mark}{fav_mark}{source} {track.id:4d}  \u2514\u2500 "
@@ -353,17 +359,6 @@ class RenderPanelsMixin:
             cover_top = max(top + 2, top + height - cover_height - 1)
             cover_x = x + 1 + max(0, (width - 2 - cover_width) // 2)
 
-        if self.lyrics_visible and self.lyrics_text:
-            for line in self.lyrics_text.splitlines()[: max(0, top + height - row - 1)]:
-                if cover_top is not None and row >= cover_top:
-                    break
-                self.add(row, x + 1, line[: max(width - 2, 0)], self.color_attr(self.color_success, -1))
-                row += 1
-            if row < top + height - 1:
-                self.screen.refresh()
-                self.dirty = False
-                return
-
         if self.view == "channels":
             lines = [
                 "Library browser",
@@ -395,13 +390,13 @@ class RenderPanelsMixin:
                 row += 1
             return
 
-        self.add(row, x + 1, "NOW PLAYING", self.color_attr(self.color_primary, -1) | curses.A_BOLD)
+        self.add(
+            row,
+            x + 1,
+            self._now_playing_header(width - 2),
+            self.color_attr(self.color_primary, -1) | curses.A_BOLD,
+        )
         row += 1
-        for line in wrap(self.current_track.display_title, width - 2):
-            if cover_top is not None and row >= cover_top:
-                break
-            self.add(row, x + 1, line, self.color_attr(self.color_success, -1) | curses.A_BOLD)
-            row += 1
 
         with connect() as conn:
             fav = is_favorite(conn, self.current_track.id)
@@ -413,24 +408,25 @@ class RenderPanelsMixin:
             ("Cache", "Ready" if self.current_track.local_path else "Remote"),
             ("Queue", str(len(self.play_queue))),
             ("Favorite", "Yes" if fav else "No"),
-            ("Volume", f"{self.volume}%"),
+            ("Volume", f"{self.volume}% [{self._make_volume_meter(self.volume)}]"),
             ("Repeat", "On" if self.repeat_mode else "Off"),
             ("Shuffle", "On" if self.shuffle_mode else "Off"),
         ]
         if tags:
             info_items.append(("Tags", ", ".join(tags)))
-        for label, val in info_items:
-            label_text = f"{label}: "
-            if cover_top is not None and row >= cover_top:
-                break
-            self.add(row, x + 1, label_text, self.color_attr(self.color_primary, -1))
-            val_x = x + 1 + len(label_text)
-            val_width = max(width - len(label_text) - 2, 5)
-            for line in wrap(val, val_width):
+        if not self.lyrics_visible:
+            for label, val in info_items:
+                label_text = f"{label}: "
                 if cover_top is not None and row >= cover_top:
                     break
-                self.add(row, val_x, line)
-                row += 1
+                self.add(row, x + 1, label_text, self.color_attr(self.color_primary, -1))
+                val_x = x + 1 + len(label_text)
+                val_width = max(width - len(label_text) - 2, 5)
+                for line in wrap(val, val_width):
+                    if cover_top is not None and row >= cover_top:
+                        break
+                    self.add(row, val_x, line)
+                    row += 1
 
         if self.current_track is not None and self.play_start_time is not None:
             if row < top + height - 1 and (cover_top is None or row < cover_top):
@@ -445,12 +441,12 @@ class RenderPanelsMixin:
                 duration_str = format_duration(duration)
 
                 bar_width = max(width - len(elapsed_str) - len(duration_str) - 6, 8)
-                bar = self._make_progress_bar(elapsed, duration, bar_width)
+                bar = self._make_slider_bar(elapsed, duration, bar_width)
                 timeline_text = f" {elapsed_str} {bar} {duration_str}"
                 self.add(row, x + 1, timeline_text[: max(width - 2, 0)], self.color_attr(self.color_success, -1))
                 row += 1
 
-        if self.play_queue:
+        if not self.lyrics_visible and self.play_queue:
             if row < top + height - 1 and (cover_top is None or row < cover_top):
                 self.add(row, x + 1, "Queue", self.color_attr(self.color_primary, -1) | curses.A_BOLD)
                 row += 1
@@ -461,6 +457,15 @@ class RenderPanelsMixin:
                 for queued in queued_tracks[: max(0, top + height - row - 1)]:
                     self.add(row, x + 1, f"\u2022 {queued.display_title}"[: max(width - 2, 0)], curses.A_DIM)
                     row += 1
+
+        if self.lyrics_visible and self.lyrics_text and (cover_top is None or row < cover_top):
+            self.add(row, x + 1, "LYRICS", self.color_attr(self.color_primary, -1) | curses.A_BOLD)
+            row += 1
+            for line in self.lyrics_text.splitlines()[: max(0, top + height - row - 1)]:
+                if cover_top is not None and row >= cover_top:
+                    break
+                self.add(row, x + 1, line[: max(width - 2, 0)], self.color_attr(self.color_success, -1))
+                row += 1
 
         if self.cover_lines:
             if cover_top is not None:

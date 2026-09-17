@@ -110,7 +110,7 @@ class RenderClassicMixin:
         # ── Control panel ──
         ctrl_y = sep_y + 1
         status_text = f"Status: {'Running' if self.player.is_playing() else 'Stopped'}"
-        vol_text = f"Volume: {self.volume}"
+        vol_text = f"Volume: {self.volume}% [{self._make_volume_meter(self.volume)}]"
         speed_text = "Speed: 1.0"
         gapless_text = "Gapless: True"
         ctrl_line = f"  {status_text}    {vol_text}    {speed_text}    {gapless_text}"
@@ -124,7 +124,7 @@ class RenderClassicMixin:
             elapsed_str = format_duration(elapsed)
             dur_str = format_duration(duration)
             bar_w = max(width - len(elapsed_str) - len(dur_str) - 6, 10)
-            bar = self._make_progress_bar(elapsed, duration, bar_w)
+            bar = self._make_slider_bar(elapsed, duration, bar_w)
             progress_line = f"  {elapsed_str} {bar} {dur_str}"
             prog_attr = self.color_attr(self.color_success, -1)
             self.screen.addnstr(ctrl_y + 1, 0, progress_line[:width - 1], width - 1, prog_attr)

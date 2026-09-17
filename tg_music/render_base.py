@@ -21,6 +21,31 @@ def wrap(text: str, width: int) -> list[str]:
     return textwrap.wrap(text, width=max(width, 10)) or [""]
 
 
+def hex_to_256(hex_value: str) -> int:
+    """Map an ``#rrggbb`` hex color to the nearest xterm 256-color index."""
+    hex_value = hex_value.lstrip("#")
+    if len(hex_value) == 3:
+        hex_value = "".join(ch * 2 for ch in hex_value)
+    r = int(hex_value[0:2], 16)
+    g = int(hex_value[2:4], 16)
+    b = int(hex_value[4:6], 16)
+
+    if r == g == b:
+        idx = round((r - 8) / 247 * 23)
+        return 232 + max(0, min(23, idx))
+
+    cube = (0, 95, 135, 175, 215, 255)
+    best = None
+    for ri in range(6):
+        for gi in range(6):
+            for bi in range(6):
+                cr, cg, cb = cube[ri], cube[gi], cube[bi]
+                d = (cr - r) ** 2 + (cg - g) ** 2 + (cb - b) ** 2
+                if best is None or d < best[0]:
+                    best = (d, 16 + 36 * ri + 6 * gi + bi)
+    return best[1]
+
+
 def parse_ansi_sgr(text: str) -> list[tuple[str, int | None, int | None]]:
     parts: list[tuple[str, int | None, int | None]] = []
     pos = 0
@@ -91,20 +116,29 @@ class RenderBaseMixin:
             pass
 
         ct = self.current_color_theme()
-        self.color_primary = ct.primary
-        self.color_success = ct.success
-        self.color_warning = ct.warning
-        self.color_error = ct.error
+        supports_256 = curses.COLORS >= 256
+
+        def resolve(role: str, default: int) -> int:
+            if supports_256 and ct.palette_256:
+                hex_value = ct.palette_256.get(role)
+                if hex_value:
+                    return hex_to_256(hex_value)
+            return default
+
+        self.color_primary = resolve("primary", ct.primary)
+        self.color_success = resolve("success", ct.success)
+        self.color_warning = resolve("warning", ct.warning)
+        self.color_error = resolve("error", ct.error)
 
         standards = [
-            (ct.primary, -1, 1),
-            (ct.success, -1, 2),
-            (ct.warning, -1, 3),
-            (ct.error, -1, 4),
-            (curses.COLOR_BLUE, -1, 5),
-            (curses.COLOR_MAGENTA, -1, 6),
-            (ct.selected_fg, ct.selected_bg, 7),
-            (ct.header_fg, ct.header_bg, 8),
+            (self.color_primary, -1, 1),
+            (self.color_success, -1, 2),
+            (self.color_warning, -1, 3),
+            (self.color_error, -1, 4),
+            (resolve("blue", curses.COLOR_BLUE), -1, 5),
+            (resolve("magenta", curses.COLOR_MAGENTA), -1, 6),
+            (resolve("selected_fg", ct.selected_fg), resolve("selected_bg", ct.selected_bg), 7),
+            (resolve("header_fg", ct.header_fg), resolve("header_bg", ct.header_bg), 8),
         ]
 
         for fg, bg, pair_id in standards:
@@ -134,25 +168,22 @@ class RenderBaseMixin:
             self.color_pairs[key] = pair
         return curses.color_pair(pair)
 
-    def _make_progress_bar(self, elapsed: float, duration: float, width: int) -> str:
-        bar_width = max(width, 8)
-        percent = min(elapsed / duration, 1.0) if duration > 0 else 0
-        filled = int(percent * bar_width)
-        fraction = (percent * bar_width) - filled
-        bar = "\u2588" * filled
-        if filled < bar_width:
-            if fraction >= 0.75:
-                bar += "\u258a"
-            elif fraction >= 0.5:
-                bar += "\u258c"
-            elif fraction >= 0.25:
-                bar += "\u258e"
-            else:
-                bar += "\u2591"
-            remaining = bar_width - len(bar)
-            if remaining > 0:
-                bar += "\u2591" * remaining
-        return bar
+    def _make_slider_bar(self, elapsed: float, duration: float, width: int) -> str:
+        width = max(width, 8)
+        if duration <= 0:
+            duration = 1
+        percent = min(max(elapsed / duration, 0.0), 1.0)
+        knob = int(round(percent * (width - 1)))
+        knob = max(0, min(width - 1, knob))
+        chars = ["\u2501"] * width
+        chars[knob] = "\u25cf"
+        return "".join(chars)
+
+    def _make_volume_meter(self, volume: int, cells: int = 10) -> str:
+        v = max(0, min(150, int(volume)))
+        filled = int(round(v / 150 * cells))
+        filled = max(0, min(cells, filled))
+        return "\u25a0" * filled + "\u25a1" * (cells - filled)
 
     def cover_size(self, screen_height: int | None = None, screen_width: int | None = None) -> tuple[int, int]:
         if screen_height is None or screen_width is None:

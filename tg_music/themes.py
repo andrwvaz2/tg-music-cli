@@ -19,6 +19,7 @@ class ColorTheme:
     playing_fg: int
     playing_bg: int
     dim: bool
+    palette_256: dict[str, str] | None = None
 
 
 THEMES: dict[str, ColorTheme] = {
@@ -36,6 +37,19 @@ THEMES: dict[str, ColorTheme] = {
         playing_fg=curses.COLOR_GREEN,
         playing_bg=-1,
         dim=True,
+        palette_256={
+            "primary": "#BD93F9",
+            "success": "#50FA7B",
+            "warning": "#F1FA8C",
+            "error": "#FF5555",
+            "header_fg": "#F8F8F2",
+            "header_bg": "#BD93F9",
+            "selected_fg": "#282A36",
+            "selected_bg": "#8BE9FD",
+            "playing_fg": "#50FA7B",
+            "blue": "#6272A4",
+            "magenta": "#FF79C6",
+        },
     ),
     "nord": ColorTheme(
         name="Nord",
@@ -51,6 +65,19 @@ THEMES: dict[str, ColorTheme] = {
         playing_fg=curses.COLOR_GREEN,
         playing_bg=-1,
         dim=True,
+        palette_256={
+            "primary": "#88C0D0",
+            "success": "#A3BE8C",
+            "warning": "#EBCB8B",
+            "error": "#BF616A",
+            "header_fg": "#ECEFF4",
+            "header_bg": "#5E81AC",
+            "selected_fg": "#2E3440",
+            "selected_bg": "#88C0D0",
+            "playing_fg": "#A3BE8C",
+            "blue": "#81A1C1",
+            "magenta": "#B48EAD",
+        },
     ),
     "solarized-dark": ColorTheme(
         name="Solarized Dark",
@@ -111,6 +138,19 @@ THEMES: dict[str, ColorTheme] = {
         playing_fg=curses.COLOR_GREEN,
         playing_bg=-1,
         dim=True,
+        palette_256={
+            "primary": "#7AA2F7",
+            "success": "#9ECE6A",
+            "warning": "#E0AF68",
+            "error": "#F7768E",
+            "header_fg": "#C0CAF5",
+            "header_bg": "#7AA2F7",
+            "selected_fg": "#1A1B26",
+            "selected_bg": "#7AA2F7",
+            "playing_fg": "#9ECE6A",
+            "blue": "#7DCFFF",
+            "magenta": "#FF007C",
+        },
     ),
     "catppuccin": ColorTheme(
         name="Catppuccin Mocha",
@@ -126,6 +166,19 @@ THEMES: dict[str, ColorTheme] = {
         playing_fg=curses.COLOR_GREEN,
         playing_bg=-1,
         dim=True,
+        palette_256={
+            "primary": "#CBA6F7",
+            "success": "#A6E3A1",
+            "warning": "#F9E2AF",
+            "error": "#F38BA8",
+            "header_fg": "#CDD6F4",
+            "header_bg": "#CBA6F7",
+            "selected_fg": "#1E1E2E",
+            "selected_bg": "#89B4FA",
+            "playing_fg": "#A6E3A1",
+            "blue": "#89B4FA",
+            "magenta": "#F5E0DC",
+        },
     ),
     "monokai": ColorTheme(
         name="Monokai",

@@ -17,112 +17,163 @@ class RenderHelpMixin:
         self.dirty = True
 
     def draw_help_overlay(self, width: int, height: int) -> None:
-        overlay_w = min(68, width - 4)
-        overlay_h = min(28, height - 4)
-        start_y = max(1, (height - overlay_h) // 2)
-        start_x = max(1, (width - overlay_w) // 2)
-
-        panel_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK)
-        border_attr = self.color_attr(curses.COLOR_CYAN, curses.COLOR_BLACK) | curses.A_BOLD
-        title_attr = self.color_attr(curses.COLOR_BLACK, curses.COLOR_CYAN) | curses.A_BOLD
-        section_attr = self.color_attr(curses.COLOR_CYAN, curses.COLOR_BLACK) | curses.A_BOLD
-        key_attr = self.color_attr(curses.COLOR_GREEN, curses.COLOR_BLACK) | curses.A_BOLD
-        desc_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK)
-        dim_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK) | curses.A_DIM
-
-        for y in range(start_y, start_y + overlay_h):
-            self.screen.addnstr(y, start_x, " " * overlay_w, overlay_w, panel_attr)
-        self.screen.addnstr(start_y, start_x, "\u250c" + "\u2500" * (overlay_w - 2) + "\u2510", overlay_w, border_attr)
-        for y in range(start_y + 1, start_y + overlay_h - 1):
-            self.screen.addnstr(y, start_x, "\u2502", 1, border_attr)
-            self.screen.addnstr(y, start_x + overlay_w - 1, "\u2502", 1, border_attr)
-        self.screen.addnstr(
-            start_y + overlay_h - 1, start_x, "\u2514" + "\u2500" * (overlay_w - 2) + "\u2518", overlay_w, border_attr
-        )
-
-        title = " TG-MUSIC Help "
-        self.screen.addnstr(
-            start_y, start_x + max(1, (overlay_w - len(title)) // 2), title, max(overlay_w - 2, 0), title_attr
-        )
-
-        sections = [
+        col1_sections = [
             (
                 "Playback",
                 [
                     ("Enter", "Play selected track"),
-                    ("Space", "Expand/collapse details"),
+                    ("Space", "Expand / Collapse"),
                     ("n / Right", "Next track"),
                     ("p / Left", "Previous track"),
-                    ("S", "Stop playback"),
-                    ("s", "Toggle shuffle"),
-                    ("r", "Toggle repeat"),
+                    ("s", "Stop playback"),
+                    ("S", "Toggle shuffle"),
+                    ("R", "Toggle repeat"),
+                    ("+ / -", "Adjust volume"),
                 ],
             ),
             (
+                "Playlists & Queue",
+                [
+                    ("y", "View playlists"),
+                    ("Y", "Add to playlist"),
+                    ("e", "Add to play queue"),
+                    ("E", "Clear play queue"),
+                    ("[ / ]", "Reorder in queue/pl"),
+                ],
+            ),
+        ]
+
+        col2_sections = [
+            (
                 "Navigation",
                 [
-                    ("Up/Down", "Move selection"),
-                    ("PgUp/PgDn", "Page up/down"),
-                    ("Home/End", "First/last track"),
+                    ("Up / Down", "Move selection"),
+                    ("PgUp / PgDn", "Jump 10 tracks"),
+                    ("Home / End", "First / last track"),
                     ("Tab", "Switch panel (split)"),
-                    ("c", "Switch to channels"),
+                    ("c", "Channel browser"),
+                    ("r", "Reload track list"),
                 ],
             ),
             (
                 "Library",
                 [
-                    ("/", "Search (live filter)"),
+                    ("/", "Search / filter"),
+                    ("G", "Global search (FTS)"),
                     ("f", "Toggle favorite"),
-                    ("t", "Tag prompt"),
                     ("1", "Filter favorites only"),
-                    ("a", "Add channel"),
-                    ("u", "Scan channel"),
+                    ("t", "Tag track"),
+                    ("a", "Add channel/playlist"),
+                    ("u", "Scan current channel"),
                     ("g", "Open local folder"),
-                    ("m", "Show missing tracks"),
+                    ("m", "Download missing"),
+                    ("x", "Ignore track"),
                 ],
             ),
+        ]
+
+        col3_sections = [
             (
-                "Playlists",
+                "Views & Display",
                 [
-                    ("y", "Toggle playlists view"),
-                    ("Y", "Add to playlist"),
-                    ("e", "Add to play queue"),
-                    ("E", "Clear play queue"),
-                ],
-            ),
-            (
-                "Display",
-                [
-                    ("L", "Toggle lyrics"),
-                    ("M", "Mini player mode"),
                     ("P", "Split view (3 panels)"),
                     ("C", "Classic view"),
-                    (":", "Command mode"),
+                    ("M", "Mini player mode"),
+                    ("L", "Toggle lyrics"),
+                ],
+            ),
+            (
+                "Themes",
+                [
                     ("T", "Cycle theme"),
                     ("F2", "Theme picker"),
+                ],
+            ),
+            (
+                "General & Commands",
+                [
+                    (":", "Command mode"),
+                    (":login", "Log in to Telegram"),
                     ("? / H / F1", "Toggle this help"),
                     ("q", "Quit"),
                 ],
             ),
         ]
 
-        content_y = start_y + 2
-        for section_name, keys in sections:
-            if content_y >= start_y + overlay_h - 2:
-                break
-            self.screen.addnstr(content_y, start_x + 2, f" {section_name} ", max(overlay_w - 4, 0), section_attr)
-            content_y += 1
-            for key, desc in keys:
-                if content_y >= start_y + overlay_h - 1:
-                    break
-                self.screen.addnstr(content_y, start_x + 4, f"{key:<14}", max(overlay_w - 8, 0), key_attr)
-                self.screen.addnstr(
-                    content_y, start_x + 18, desc[: max(overlay_w - 22, 0)], max(overlay_w - 22, 0), desc_attr
-                )
-                content_y += 1
-            content_y += 1
+        if width >= 105:
+            columns = [col1_sections, col2_sections, col3_sections]
+            overlay_w = min(114, width - 4)
+        elif width >= 72:
+            columns = [col1_sections + col3_sections[:1], col2_sections + col3_sections[1:]]
+            overlay_w = min(82, width - 4)
+        else:
+            columns = [col1_sections + col2_sections + col3_sections]
+            overlay_w = min(68, width - 4)
 
-        footer = f" {overlay_w - 2} cols "
+        overlay_h = min(23, height - 2) if height >= 25 else max(10, height - 2)
+        start_y = max(1, (height - overlay_h) // 2)
+        start_x = max(1, (width - overlay_w) // 2)
+
+        panel_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK)
+        border_attr = self.color_attr(self.color_primary, curses.COLOR_BLACK) | curses.A_BOLD
+        title_attr = self.color_attr(curses.COLOR_BLACK, self.color_primary) | curses.A_BOLD
+        section_attr = self.color_attr(self.color_primary, curses.COLOR_BLACK) | curses.A_BOLD
+        key_attr = self.color_attr(self.color_success, curses.COLOR_BLACK) | curses.A_BOLD
+        desc_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK)
+        dim_attr = self.color_attr(curses.COLOR_WHITE, curses.COLOR_BLACK) | curses.A_DIM
+
+        # Clear background box
+        for y in range(start_y, start_y + overlay_h):
+            self.screen.addnstr(y, start_x, " " * overlay_w, overlay_w, panel_attr)
+
+        # Draw outer borders with rounded corners
+        self.screen.addnstr(start_y, start_x, "\u256d" + "\u2500" * (overlay_w - 2) + "\u256e", overlay_w, border_attr)
+        for y in range(start_y + 1, start_y + overlay_h - 1):
+            self.screen.addnstr(y, start_x, "\u2502", 1, border_attr)
+            self.screen.addnstr(y, start_x + overlay_w - 1, "\u2502", 1, border_attr)
+        self.screen.addnstr(
+            start_y + overlay_h - 1, start_x, "\u2570" + "\u2500" * (overlay_w - 2) + "\u256f", overlay_w, border_attr
+        )
+
+        # Title
+        title = f" TG-MUSIC Help (v{get_version()}) "
+        self.screen.addnstr(
+            start_y, start_x + max(1, (overlay_w - len(title)) // 2), title, max(overlay_w - 2, 0), title_attr
+        )
+
+        num_cols = len(columns)
+        total_inner_w = overlay_w - 2 - (num_cols - 1)
+        col_w = max(total_inner_w // num_cols, 20)
+
+        # Render columns and vertical column dividers
+        for col_idx, col_data in enumerate(columns):
+            cur_col_x = start_x + 1 + col_idx * (col_w + 1)
+            if col_idx > 0:
+                sep_x = cur_col_x - 1
+                for y in range(start_y + 1, start_y + overlay_h - 1):
+                    self.screen.addnstr(y, sep_x, "\u2502", 1, dim_attr)
+
+            content_y = start_y + 1
+            for section_name, keys in col_data:
+                if content_y >= start_y + overlay_h - 2:
+                    break
+                sec_header = f" \u25b8 {section_name} "
+                self.screen.addnstr(content_y, cur_col_x + 1, sec_header[: col_w - 1], max(col_w - 1, 0), section_attr)
+                content_y += 1
+
+                for key, desc in keys:
+                    if content_y >= start_y + overlay_h - 1:
+                        break
+                    key_str = f" {key:<10}"
+                    self.screen.addnstr(content_y, cur_col_x + 1, key_str[: col_w - 1], max(col_w - 1, 0), key_attr)
+                    desc_x = cur_col_x + 1 + len(key_str)
+                    avail_desc = max(col_w - len(key_str) - 1, 0)
+                    if avail_desc > 0:
+                        self.screen.addnstr(content_y, desc_x, desc[:avail_desc], avail_desc, desc_attr)
+                    content_y += 1
+                content_y += 1
+
+        footer = " Presiona [?] o [Esc] para cerrar "
         self.screen.addnstr(
             start_y + overlay_h - 1,
             start_x + max(1, (overlay_w - len(footer)) // 2),
@@ -157,7 +208,7 @@ class RenderHelpMixin:
                 dur_str = format_duration(duration)
 
             bar_width = max(width - len(elapsed_str) - len(dur_str) - 6, 8)
-            bar = self._make_progress_bar(
+            bar = self._make_slider_bar(
                 int(elapsed_str.split(":")[0]) * 60 + int(elapsed_str.split(":")[1]),
                 int(dur_str.split(":")[0]) * 60 + int(dur_str.split(":")[1]),
                 bar_width,

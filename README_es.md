@@ -5,17 +5,29 @@
 # tg-music-cli
 
 <p align="center">
-  <a href="https://github.com/andrwvaz2/tg-music-cli/actions/workflows/ci.yml"><img src="https://github.com/andrwvaz2/tg-music-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/Licencia-MIT-yellow.svg" alt="Licencia MIT"></a>
+  <a href="https://github.com/DenverCoder1/readme-typing-svg">
+    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=19&duration=3000&pause=1200&color=38BDF8&center=true&vCenter=true&width=560&lines=Reproductor+de+m%C3%BAsica+en+terminal+para+Telegram;Navegaci%C3%B3n+por+carpetas+%E2%80%A2+Precarga+inteligente;Car%C3%A1tulas+integradas+con+chafa;Desarrollado+con+Python+%2B+mpv+%2B+SQLite" alt="Typing SVG" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/andrwvaz2/tg-music-cli/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/andrwvaz2/tg-music-cli/ci.yml?branch=main&style=flat-square&label=CI&logo=githubactions&logoColor=white" alt="CI"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/licencia-MIT-blue.svg?style=flat-square" alt="Licencia MIT"></a>
+  <a href="https://github.com/andrwvaz2/tg-music-cli/stargazers"><img src="https://img.shields.io/github/stars/andrwvaz2/tg-music-cli?style=flat-square&logo=github" alt="GitHub Stars"></a>
+  <a href="https://github.com/andrwvaz2/tg-music-cli/issues"><img src="https://img.shields.io/github/issues/andrwvaz2/tg-music-cli?style=flat-square" alt="GitHub Issues"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/plataforma-Linux%20%7C%20macOS%20%7C%20WSL-lightgrey?style=flat-square" alt="Plataforma: Linux | macOS | WSL">
+  <img src="https://img.shields.io/badge/audio-mpv-B33D26?style=flat-square&logo=mpv&logoColor=white" alt="mpv">
+  <img src="https://img.shields.io/badge/arte-chafa-2E7D32?style=flat-square" alt="chafa">
+  <img src="https://img.shields.io/badge/base_de_datos-SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/cliente-Telethon-26A5E4?style=flat-square&logo=telegram&logoColor=white" alt="Telethon">
 </p>
 
 <p align="center">
   <img src="assets/banner.jpg" alt="Banner de tg-music" width="100%">
-</p>
-
-<p align="center">
-  <b>Un reproductor y transmisor de música rápido y ligero para la terminal, diseñado para canales de Telegram.</b>
 </p>
 
 ---
@@ -395,6 +407,28 @@ Si la carátula no se visualiza en la terminal:
 ## Contribuciones y Comunidad
 
 ¡Las contribuciones, reportes de bugs y sugerencias son más que bienvenidos! Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para ver la guía de desarrollo, o abre una issue o pull request directamente en el repositorio de GitHub.
+
+### Contribuidores
+
+<p align="center">
+  <a href="https://github.com/andrwvaz2/tg-music-cli/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=andrwvaz2/tg-music-cli" alt="Contribuidores" />
+  </a>
+</p>
+
+---
+
+## Star History
+
+<p align="center">
+  <a href="https://star-history.com/#andrwvaz2/tg-music-cli&Date">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=andrwvaz2/tg-music-cli&type=Date&theme=dark" />
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=andrwvaz2/tg-music-cli&type=Date" />
+      <img alt="Gráfico de Star History" src="https://api.star-history.com/svg?repos=andrwvaz2/tg-music-cli&type=Date" width="100%" style="max-width: 750px;" />
+    </picture>
+  </a>
+</p>
 
 ---
 

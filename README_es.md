@@ -418,6 +418,18 @@ Si la carátula no se visualiza en la terminal:
 
 ---
 
+## Apoyo
+
+Si disfrutas usando **tg-music-cli** y quieres apoyar su desarrollo:
+
+<div align="center">
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L3N4285WES)
+
+</div>
+
+---
+
 ## Star History
 
 <p align="center">

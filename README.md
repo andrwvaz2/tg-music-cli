@@ -418,6 +418,18 @@ Contributions, bug reports, and feature requests are welcome! Check out [CONTRIB
 
 ---
 
+## Support
+
+If you enjoy using **tg-music-cli** and want to support its ongoing development:
+
+<div align="center">
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L3N4285WES)
+
+</div>
+
+---
+
 ## Star History
 
 <p align="center">

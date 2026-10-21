@@ -40,7 +40,7 @@ def _get_cache_dir() -> Path:
 DATA_DIR = _xdg_path("XDG_DATA_HOME", Path.home() / ".local" / "share") / APP_NAME
 CACHE_DIR = _get_cache_dir()
 DB_FILE = DATA_DIR / "library.sqlite3"
-SESSION_FILE = DATA_DIR / "session"
+SESSION_FILE = DATA_DIR / "session.session"
 AUDIO_CACHE_DIR = CACHE_DIR / "audio"
 COVER_CACHE_DIR = CACHE_DIR / "covers"
 

@@ -26,6 +26,10 @@ from .models import Track
 AUDIO_EXTENSIONS = {".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wav", ".webm"}
 
 
+class DownloadCancelled(Exception):
+    """El usuario canceló la descarga en curso."""
+
+
 def normalize_channel(channel: str) -> str:
     channel = channel.strip()
     if channel.startswith("http://") or channel.startswith("https://"):
@@ -201,6 +205,11 @@ async def download_track_with_client(
             return Path(downloaded)
         except (UnauthorizedError, AuthKeyUnregisteredError):
             mark_session_expired()
+            raise
+        except DownloadCancelled:
+            # Cancelación del usuario: no reintentar y borrar el parcial
+            if destination.exists():
+                destination.unlink()
             raise
         except Exception as exc:
             last_error = exc

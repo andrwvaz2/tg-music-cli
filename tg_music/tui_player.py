@@ -10,7 +10,7 @@ from .cover import extract_embedded_cover
 from .db import connect, get_playlist_tracks, get_track, list_playlists, list_tracks, record_play, set_ignored
 from .models import Track
 from .shared import delete_cached_files, format_bytes
-from .telegram_client import download_cover, download_track
+from .telegram_client import DownloadCancelled, download_cover, download_track
 
 
 class PlayerMixin:
@@ -79,6 +79,13 @@ class PlayerMixin:
                 self.downloading_track_id = track.id
                 try:
                     path = asyncio.run(download_track(track, progress=self.download_progress))
+                except DownloadCancelled:
+                    self.status = "Descarga cancelada"
+                    self.cache_line = "Cache: descarga cancelada"
+                    self.downloading_track_id = None
+                    self.dirty = True
+                    self.draw()
+                    return
                 finally:
                     self.downloading_track_id = None
             if not path:
@@ -277,10 +284,21 @@ class PlayerMixin:
             bar_width = 15
             filled = int(percent / 100 * bar_width)
             bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
-            self.cache_line = f"Cache: [{bar}] {percent:5.1f}%  ({format_bytes(downloaded)} / {format_bytes(total)})"
+            self.cache_line = (
+                f"Cache: [{bar}] {percent:5.1f}%  ({format_bytes(downloaded)} / {format_bytes(total)})"
+                " | Esc/s: cancelar"
+            )
         else:
-            self.cache_line = f"Cache: {format_bytes(downloaded)}"
+            self.cache_line = f"Cache: {format_bytes(downloaded)} | Esc/s: cancelar"
         self.draw()
+        # El callback corre en el hilo principal (asyncio.run dentro de play_track),
+        # así que es seguro leer teclas acá para abortar la descarga.
+        key = self.screen.getch()
+        if key in (27, ord("s")):
+            raise DownloadCancelled()
+        if key == ord("q"):
+            self._quit_requested = True
+            raise DownloadCancelled()
 
     def start_precache_after_selection(self) -> None:
         if self.precache_thread and self.precache_thread.is_alive():

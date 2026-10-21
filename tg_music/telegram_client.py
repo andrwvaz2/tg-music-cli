@@ -218,6 +218,70 @@ async def download_track_with_client(
     raise last_error or RuntimeError("Descarga fallo despues de reintentos.")
 
 
+async def download_track_streaming(
+    track: Track,
+    on_buffered: Callable[[Path], None] | None = None,
+    progress: ProgressCallback | None = None,
+    buffer_bytes: int = 5 * 1024 * 1024,
+) -> Path:
+    """Descarga un track avisando cuando hay buffer suficiente para empezar a reproducir.
+
+    A diferencia de download_track, escribe el archivo de a poco y llama
+    ``on_buffered`` en cuanto se juntan ``buffer_bytes`` (o el archivo completo
+    si es más chico), de modo que mpv puede arrancar mientras la descarga sigue.
+    """
+    cached = Path(track.local_path).expanduser() if track.local_path else None
+    if cached and cached.exists():
+        if progress:
+            size = cached.stat().st_size
+            progress(size, size)
+        return cached
+
+    AUDIO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    target_dir = AUDIO_CACHE_DIR / safe_name(track.channel)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    extension = Path(track.filename).suffix if track.filename else ".audio"
+    filename = f"{track.message_id}-{safe_name(track.display_title)[:80]}{extension}"
+    destination = target_dir / filename
+
+    async with get_client() as client:
+        try:
+            entity = await client.get_entity(track.channel)
+            message = await client.get_messages(entity, ids=track.message_id)
+        except (UnauthorizedError, AuthKeyUnregisteredError):
+            mark_session_expired()
+            raise
+        if message is None or message.document is None:
+            raise RuntimeError("No encontre el mensaje original en Telegram.")
+
+        document = message.document
+        total = document.size or 0
+        threshold = min(buffer_bytes, total) if total else buffer_bytes
+        written = 0
+        buffered = False
+        try:
+            with open(destination, "wb") as handle:
+                async for chunk in client.iter_download(document, request_size=1024 * 1024):
+                    handle.write(chunk)
+                    handle.flush()
+                    written += len(chunk)
+                    if progress:
+                        progress(written, total)
+                    if not buffered and written >= threshold:
+                        buffered = True
+                        if on_buffered:
+                            on_buffered(destination)
+            if not buffered and on_buffered:
+                on_buffered(destination)
+        except BaseException:
+            destination.unlink(missing_ok=True)
+            raise
+
+    with connect() as conn:
+        update_local_path(conn, track.id, str(destination))
+    return destination
+
+
 async def download_cover(track: Track) -> Path | None:
     existing = sorted(COVER_CACHE_DIR.glob(f"{track.channel}-{track.message_id}-cover*"))
     for path in existing:

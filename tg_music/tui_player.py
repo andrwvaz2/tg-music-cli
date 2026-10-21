@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import random
 import threading
 import time
@@ -10,7 +11,24 @@ from .cover import extract_embedded_cover
 from .db import connect, get_playlist_tracks, get_track, list_playlists, list_tracks, record_play, set_ignored
 from .models import Track
 from .shared import delete_cached_files, format_bytes
-from .telegram_client import DownloadCancelled, download_cover, download_track
+from .telegram_client import (
+    DownloadCancelled,
+    download_cover,
+    download_track,
+    download_track_streaming,
+)
+
+
+DEFAULT_STREAM_BUFFER_MB = 5.0
+
+
+def _stream_buffer_bytes() -> int:
+    raw = os.environ.get("TG_MUSIC_STREAM_BUFFER_MB")
+    try:
+        megabytes = float(raw) if raw else DEFAULT_STREAM_BUFFER_MB
+    except ValueError:
+        megabytes = DEFAULT_STREAM_BUFFER_MB
+    return int(max(1.0, min(64.0, megabytes)) * 1024 * 1024)
 
 
 class PlayerMixin:
@@ -72,14 +90,47 @@ class PlayerMixin:
             self.selected = selected_index
         self.status = f"Preparing cache: {track.display_title}"
         self.draw()
+
+        playback_started = False
+
+        def begin_playback(audio_path: Path) -> None:
+            nonlocal playback_started
+            if playback_started:
+                return
+            playback_started = True
+            self.player.play(audio_path)
+            self.manual_stop = False
+            self.play_start_time = time.time()
+            self.last_elapsed_seconds = 0
+            self.current_track = track
+            self.current_audio_path = audio_path
+            self.now_playing = track.display_title
+            self.status = f"Playing: {track.display_title}"
+            self.dirty = True
+            self.mpris.notify_state()
+            self.draw()
+
         try:
             if track.channel == LOCAL_CHANNEL:
                 path = track.local_path
+                if path:
+                    begin_playback(Path(path).expanduser())
             else:
                 self.downloading_track_id = track.id
                 try:
-                    path = asyncio.run(download_track(track, progress=self.download_progress))
+                    if os.environ.get("TG_MUSIC_NO_STREAM"):
+                        path = asyncio.run(download_track(track, progress=self.download_progress))
+                    else:
+                        path = asyncio.run(
+                            download_track_streaming(
+                                track,
+                                on_buffered=begin_playback,
+                                progress=self.download_progress,
+                                buffer_bytes=_stream_buffer_bytes(),
+                            )
+                        )
                 except DownloadCancelled:
+                    self.player.stop()
                     self.status = "Descarga cancelada"
                     self.cache_line = "Cache: descarga cancelada"
                     self.downloading_track_id = None
@@ -88,6 +139,7 @@ class PlayerMixin:
                     return
                 finally:
                     self.downloading_track_id = None
+                begin_playback(path)
             if not path:
                 self.status = "Could not get the audio file"
                 return
@@ -97,15 +149,7 @@ class PlayerMixin:
             self.cover_render_key = None
             screen_height, screen_width = self.screen.getmaxyx()
             self.refresh_cover_art(screen_height, screen_width)
-            self.player.play(path)
-            self.manual_stop = False
-            self.play_start_time = time.time()
-            self.last_elapsed_seconds = 0
-            self.current_track = track
-            self.current_audio_path = path
-            self.now_playing = track.display_title
             self.cache_line = "Cache: Ready"
-            self.status = f"Playing: {track.display_title}"
             if track.channel != LOCAL_CHANNEL:
                 with connect() as conn:
                     record_play(conn, track.id)

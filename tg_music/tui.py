@@ -96,6 +96,7 @@ class Tui(RenderMixin, PlayerMixin):
         self.volume = settings.volume
         self.repeat_mode = False
         self.shuffle_mode = False
+        self.shuffle_base_order: list[int] = []
 
         self.now_playing = ""
         self.current_track: Track | None = None
@@ -655,8 +656,42 @@ class Tui(RenderMixin, PlayerMixin):
 
     def toggle_shuffle(self) -> None:
         self.shuffle_mode = not self.shuffle_mode
-        self.status = f"Shuffle: {'on' if self.shuffle_mode else 'off'}"
+        if self.shuffle_mode:
+            self.apply_shuffle_order()
+            self.status = f"Shuffle: on | {len(self.tracks)} temas barajados"
+        else:
+            self.restore_shuffle_order()
+            self.status = "Shuffle: off | orden original"
         self.dirty = True
+
+    def apply_shuffle_order(self) -> None:
+        """Baraja la lista actual (Fisher-Yates) dejando el tema en curso al frente."""
+        if len(self.tracks) < 2:
+            return
+        if not self.shuffle_base_order:
+            self.shuffle_base_order = [track.id for track in self.tracks]
+        current_id = self.current_track.id if self.current_track is not None else None
+        random.shuffle(self.tracks)
+        if current_id is not None:
+            for index, track in enumerate(self.tracks):
+                if track.id == current_id:
+                    self.tracks.insert(0, self.tracks.pop(index))
+                    self.selected = 0
+                    break
+
+    def restore_shuffle_order(self) -> None:
+        """Devuelve la lista al orden previo al shuffle."""
+        if not self.shuffle_base_order:
+            return
+        current_id = self.current_track.id if self.current_track is not None else None
+        order = {track_id: index for index, track_id in enumerate(self.shuffle_base_order)}
+        self.tracks.sort(key=lambda track: order.get(track.id, len(order)))
+        if current_id is not None:
+            for index, track in enumerate(self.tracks):
+                if track.id == current_id:
+                    self.selected = index
+                    break
+        self.shuffle_base_order = []
 
     def toggle_favorite_selected(self) -> None:
         if self.view == "channels" or not self.tracks:
@@ -981,6 +1016,9 @@ class Tui(RenderMixin, PlayerMixin):
                 for t in self.tracks
                 if fuzzy_match(self.query, t.display_title) or fuzzy_match(self.query, t.channel_title)
             ]
+        if self.shuffle_mode and self.shuffle_base_order:
+            order = {track_id: index for index, track_id in enumerate(self.shuffle_base_order)}
+            self.tracks.sort(key=lambda track: order.get(track.id, len(order)))
         self.browser_rows = self.build_browser_rows()
         items_len = len(self.browser_rows) if self.view == "channels" else len(self.tracks)
         self.selected = min(self.selected, max(items_len - 1, 0))

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 import threading
 import time
 
@@ -184,18 +183,6 @@ class PlayerMixin:
                 self.play_track(queued_track, selected_index=queued_index)
                 return
 
-        if self.shuffle_mode:
-            available = [t for t in self.tracks if self.current_track is None or t.id != self.current_track.id]
-            if available:
-                next_track = random.choice(available)
-                next_index = next((i for i, t in enumerate(self.tracks) if t.id == next_track.id), 0)
-                self.selected = next_index
-                self.status = "Shuffle"
-                self.dirty = True
-                track = self.tracks[next_index]
-                self.play_track(track, selected_index=next_index)
-                return
-
         start = self.selected
         if self.current_track:
             for index, track in enumerate(self.tracks):
@@ -210,6 +197,18 @@ class PlayerMixin:
                 self.dirty = True
                 track = self.tracks[0]
                 self.play_track(track, selected_index=0)
+                return
+            if self.shuffle_mode:
+                # Terminó la vuelta: se re-baraja y sigue, sin repetir el actual
+                self.apply_shuffle_order()
+                self.status = "Shuffle"
+                self.dirty = True
+                if len(self.tracks) > 1:
+                    self.selected = 1
+                    self.play_track(self.tracks[1], selected_index=1)
+                elif self.tracks:
+                    self.selected = 0
+                    self.play_track(self.tracks[0], selected_index=0)
                 return
             self.status = "End of list"
             self.current_track = None

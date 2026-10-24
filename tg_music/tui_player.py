@@ -5,6 +5,7 @@ import os
 import random
 import threading
 import time
+from pathlib import Path
 
 from .cache import cache_tracks_async
 from .cover import extract_embedded_cover

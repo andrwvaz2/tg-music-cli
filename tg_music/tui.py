@@ -58,6 +58,7 @@ from .telegram_client import (
     reset_session_expired,
     scan_channel,
     scan_channel_since,
+    start_client,
 )
 from .tui_render import RenderMixin
 from .render_base import clear_terminal_images
@@ -1366,7 +1367,8 @@ class Tui(RenderMixin, PlayerMixin):
     async def _do_login(self, phone: str) -> None:
         client = get_client()
         try:
-            await client.start(
+            await start_client(
+                client,
                 phone=phone,
                 code_callback=lambda: self._login_read("Código recibido: "),
                 password=lambda: self._login_read("Contraseña 2FA: ", mask=True),

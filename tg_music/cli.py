@@ -86,6 +86,11 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.set_defaults(func=cmd_doctor)
 
     login = sub.add_parser("login", help="Log in to Telegram (interactive prompt)")
+    login.add_argument(
+        "--dc-ip",
+        default=None,
+        help="IP of the Telegram DC to connect to (when your ISP filters the stored IP; also TG_MUSIC_DC_IP)",
+    )
     login.set_defaults(func=cmd_login)
 
     scan = sub.add_parser("scan", help="Scan audio from a channel")
@@ -310,12 +315,12 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     return run_doctor()
 
 
-def cmd_login(_args: argparse.Namespace) -> int:
-    from .telegram_client import get_client
+def cmd_login(args: argparse.Namespace) -> int:
+    from .telegram_client import get_client, start_client
 
     async def _run() -> None:
         client = get_client()
-        await client.start()  # usa input() nativo: no hay curses activo aqui
+        await start_client(client, dc_ip=getattr(args, "dc_ip", None))  # usa input() nativo: no hay curses activo aqui
         me = await client.get_me()
         await client.disconnect()
         name = me.username or me.first_name or me.id

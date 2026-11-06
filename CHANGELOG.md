@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+- Login no longer loops forever on TimeoutError when the ISP filters the DC IP stored in the session (issue #1). `tg-music login` and the TUI login now retry with other IPs for the same DC and report the DC and IP when all of them fail.
+- Added `tg-music login --dc-ip <IP>` and the `TG_MUSIC_DC_IP` environment variable as an escape hatch to force a different IP for the same DC, plus a TimeoutError troubleshooting section in the README.
+
 ## [0.5.1] - 2026-09-17
 
 ### Added

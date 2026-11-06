@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
+import ipaddress
+import os
 import re
 from pathlib import Path
 from typing import Callable
@@ -47,6 +50,143 @@ def get_client() -> TelegramClient:
     cfg = load_config()
     ensure_session_permissions()
     return TelegramClient(str(SESSION_FILE), cfg.api_id, cfg.api_hash)
+
+
+# --- DC / IP fallback (issue #1) -------------------------------------------
+# Telethon retries the IP stored in the session over and over. When an ISP
+# filters that IP, `tg-music login` loops on TimeoutError and never recovers
+# without manual SQL surgery on session.session. The reporter verified that
+# changing the stored server_address for the same DC (DC 1,
+# 149.154.175.59 -> 149.154.175.50) made login succeed on the first attempt,
+# so the fallback keeps the same dc_id/port and only changes the IP.
+# Telegram publishes one base IPv4 per DC; neighbouring addresses in the
+# same range are also endpoints for that DC (verified for DC 1 in #1).
+DC_IPV4_BASE: dict[int, str] = {
+    1: "149.154.175.50",
+    2: "149.154.167.51",
+    3: "149.154.175.100",
+    4: "149.154.167.91",
+    5: "149.154.171.5",
+}
+DEFAULT_DC_ID = 2
+DEFAULT_DC_PORT = 443
+DC_IP_ENV_VAR = "TG_MUSIC_DC_IP"
+MAX_DC_FALLBACKS = 3
+
+
+def _valid_ipv4(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        return str(ipaddress.IPv4Address(value.strip()))
+    except ValueError:
+        return None
+
+
+def get_dc_ip_override(dc_ip: str | None = None) -> str | None:
+    """Return an explicit DC IP from a flag or TG_MUSIC_DC_IP, or None."""
+    return _valid_ipv4(dc_ip) or _valid_ipv4(os.environ.get(DC_IP_ENV_VAR))
+
+
+def dc_fallback_ips(dc_id: int | None, current_ip: str | None, *, limit: int = MAX_DC_FALLBACKS) -> list[str]:
+    """IPs to try for the same DC, base IP first, excluding the current one."""
+    if not isinstance(dc_id, int) or dc_id not in DC_IPV4_BASE or limit <= 0:
+        return []
+    base = DC_IPV4_BASE[dc_id]
+    prefix, last = base.rsplit(".", 1)
+    base_last = int(last)
+    candidates: list[str] = []
+    for offset in range(limit + 1):
+        ip = f"{prefix}.{base_last + offset}"
+        if ip != current_ip and ip not in candidates:
+            candidates.append(ip)
+        if len(candidates) >= limit:
+            break
+    return candidates
+
+
+def session_dc_info(client: object) -> tuple[int | None, str | None, int | None]:
+    session = getattr(client, "session", None)
+    if session is None:
+        return (None, None, None)
+    return (
+        getattr(session, "dc_id", None),
+        getattr(session, "server_address", None),
+        getattr(session, "port", None),
+    )
+
+
+async def _set_session_dc(client: object, dc_id: int, ip: str, port: int = DEFAULT_DC_PORT) -> bool:
+    session = getattr(client, "session", None)
+    if session is None:
+        return False
+    try:
+        session.set_dc(dc_id, ip, port)
+    except Exception:
+        return False
+    save = getattr(session, "save", None)
+    if callable(save):
+        try:
+            result = save()
+            if inspect.isawaitable(result):
+                await result
+        except Exception:
+            pass
+    return True
+
+
+def format_dc_connection_error(
+    dc_id: int | None,
+    ip: str | None,
+    port: int | None,
+    *,
+    tried: list[str] | None = None,
+) -> str:
+    where = f"DC {dc_id}" if dc_id else "Telegram"
+    if ip:
+        where += f", {ip}" + (f":{port}" if port else "")
+    message = f"Connection to Telegram failed ({where}). Your network may be filtering this IP."
+    if tried:
+        message += f" Tried: {', '.join(t for t in tried if t)}."
+    message += " Try TG_MUSIC_DC_IP=<another IP for the same DC> or tg-music login --dc-ip <IP>."
+    return message
+
+
+async def start_client(client: TelegramClient, *, dc_ip: str | None = None, **start_kwargs) -> TelegramClient:
+    """Start a TelegramClient, retrying connect failures on another IP for the same DC.
+
+    Only connection-stage failures (TimeoutError / ConnectionError / OSError)
+    trigger a fallback. A successful connection that later fails on sign-in
+    (wrong code, 2FA, flood wait, ...) is raised unchanged, so the caller
+    never silently re-prompts for a code.
+    """
+    override = get_dc_ip_override(dc_ip)
+    dc_id, current_ip, port = session_dc_info(client)
+    if override:
+        target_dc = dc_id if isinstance(dc_id, int) and dc_id in DC_IPV4_BASE else DEFAULT_DC_ID
+        await _set_session_dc(client, target_dc, override, port or DEFAULT_DC_PORT)
+        dc_id, current_ip, port = session_dc_info(client)
+
+    try:
+        return await client.start(**start_kwargs)
+    except (ConnectionError, TimeoutError, OSError) as exc:
+        tried = [current_ip] if current_ip else []
+        fallbacks = dc_fallback_ips(dc_id, current_ip) if dc_id else []
+        last_exc: BaseException = exc
+        for ip in fallbacks:
+            tried.append(ip)
+            if not await _set_session_dc(client, dc_id, ip, port or DEFAULT_DC_PORT):  # type: ignore[arg-type]
+                continue
+            try:
+                return await client.start(**start_kwargs)
+            except (ConnectionError, TimeoutError, OSError) as retry_exc:
+                last_exc = retry_exc
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
+                continue
+        raise RuntimeError(format_dc_connection_error(dc_id, current_ip, port, tried=tried)) from last_exc
 
 
 # Flag consultable por el TUI: se activa cuando una operación de red

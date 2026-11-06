@@ -387,6 +387,22 @@ Si ves errores del tipo "api_id/api_hash invalid":
 3. Ejecuta de nuevo `tg-music init` para actualizarlos
 4. Elimina la sesión antigua si persiste el problema: `rm ~/.local/share/tg-music/session.session`
 
+### El login falla con TimeoutError / "Connection to Telegram failed"
+
+Si `tg-music login` se queda en un bucle con `Attempt 1 at connecting failed: TimeoutError` y termina con `Connection to Telegram failed 5 time(s)`, es posible que tu ISP esté filtrando la IP del centro de datos (DC) de Telegram guardada en tu sesión. Telethon reintenta siempre esa misma IP, así que nunca se recupera solo.
+
+`tg-music login` ahora reintenta automáticamente con otras IPs del mismo DC y, si aun así falla, muestra el DC y la IP, por ejemplo `Connection to Telegram failed (DC 1, 149.154.175.59:443)`.
+
+Si el reintento automático también falla, fuerza otra IP del mismo DC:
+
+```bash
+tg-music login --dc-ip 149.154.175.50
+# o, para todos los comandos incluido el TUI:
+TG_MUSIC_DC_IP=149.154.175.50 tg-music
+```
+
+Usa una IP del mismo DC (para el DC 1, `149.154.175.50`–`149.154.175.59` eran alcanzables en el caso reportado). No borres tu sesión solo para rodear este problema; el DC guardado se mantiene y solo cambia la IP.
+
 ### mpv no encontrado
 
 Si la reproducción falla con "mpv not found":

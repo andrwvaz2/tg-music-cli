@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 import sys
 
-from .config import CACHE_DIR, CONFIG_FILE, DATA_DIR, load_config
+from .config import CACHE_DIR, CONFIG_FILE, DATA_DIR, SESSION_FILE, load_config
 from .shared import format_bytes
 
 
@@ -72,7 +72,7 @@ def run_doctor() -> int:
         print(f"  [AVISO] Configuración en {CONFIG_FILE} no encontrada.")
         print("          Ejecuta: tg-music init")
 
-    session_path = DATA_DIR / "session.session"
+    session_path = SESSION_FILE
     if session_path.exists():
         print(f"  [OK] Archivo de sesión de Telegram encontrado: {session_path}")
     else:

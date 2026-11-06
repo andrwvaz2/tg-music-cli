@@ -148,11 +148,15 @@ def save_settings(settings: AppSettings) -> None:
 
 
 def ensure_session_permissions() -> None:
-    if SESSION_FILE.exists():
-        SESSION_FILE.chmod(0o600)
-    session_journal = Path(str(SESSION_FILE) + "-journal")
-    if session_journal.exists():
-        session_journal.chmod(0o600)
+    # The auth key lives in the session DB; SQLite -wal/-shm files can hold
+    # the same pages, so they need the same 600 as the session file itself.
+    for suffix in ("", "-journal", "-wal", "-shm"):
+        path = Path(str(SESSION_FILE) + suffix)
+        if path.exists():
+            try:
+                path.chmod(0o600)
+            except OSError:
+                pass
 
 
 def save_config(api_id: str, api_hash: str) -> None:

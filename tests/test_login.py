@@ -36,7 +36,7 @@ def _make_fake_client(**kwargs):
 
 
 def test_is_authorized_async_no_session_file(tmp_path, monkeypatch):
-    sf = tmp_path / "session"
+    sf = tmp_path / "session.session"
     monkeypatch.setattr(tc, "SESSION_FILE", sf)
     monkeypatch.setattr(tc, "get_client", lambda: _make_fake_client())
     sf.unlink(missing_ok=True)
@@ -44,7 +44,7 @@ def test_is_authorized_async_no_session_file(tmp_path, monkeypatch):
 
 
 def test_is_authorized_async_valid_session(tmp_path, monkeypatch):
-    sf = tmp_path / "session"
+    sf = tmp_path / "session.session"
     monkeypatch.setattr(tc, "SESSION_FILE", sf)
     monkeypatch.setattr(tc, "get_client", lambda: _make_fake_client(authorized=True))
     sf.write_text("")
@@ -54,7 +54,7 @@ def test_is_authorized_async_valid_session(tmp_path, monkeypatch):
 def test_is_authorized_async_corrupt_session_invalidates(tmp_path, monkeypatch):
     from telethon.errors import AuthKeyUnregisteredError
 
-    sf = tmp_path / "session"
+    sf = tmp_path / "session.session"
     monkeypatch.setattr(tc, "SESSION_FILE", sf)
     monkeypatch.setattr(
         tc, "get_client", lambda: _make_fake_client(exc=AuthKeyUnregisteredError(None))

@@ -23,7 +23,7 @@ def _isolate_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cfg, "CONFIG_FILE", config_dir / "config.ini")
     monkeypatch.setattr(cfg, "DATA_DIR", data_dir)
     monkeypatch.setattr(cfg, "DB_FILE", data_dir / "library.sqlite3")
-    monkeypatch.setattr(cfg, "SESSION_FILE", data_dir / "session")
+    monkeypatch.setattr(cfg, "SESSION_FILE", data_dir / "session.session")
     monkeypatch.setattr(cfg, "CACHE_DIR", cache_dir)
     monkeypatch.setattr(cfg, "AUDIO_CACHE_DIR", cache_dir / "audio")
     monkeypatch.setattr(cfg, "COVER_CACHE_DIR", cache_dir / "covers")
